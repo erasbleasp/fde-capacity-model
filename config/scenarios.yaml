@@ -1,0 +1,22 @@
+# Named scenarios = overrides on config/assumptions.yaml, keyed by dotted path.
+# A lever override replaces the node's value; an override on an uncertain input pins it
+# (no Monte Carlo spread). Base = no overrides.
+
+Base:
+  description: Current plan. Hiring at the recent pace, 7% harvest time, ~20 partner weeks/month.
+  overrides: {}
+
+Hire-heavy:
+  description: Double the hiring pace to close the gap with headcount.
+  overrides:
+    supply.hires_per_month: 4.6
+
+Partner-leverage:
+  description: Contract more partner capacity for pattern-based and expansion work.
+  overrides:
+    partners.weeks_per_month: 45
+
+Productize:
+  description: Raise harvest time to 12% to grow the asset library faster (J-curve).
+  overrides:
+    overhead.harvest_share: 0.12

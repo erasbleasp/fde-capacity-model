@@ -6,6 +6,11 @@
 #   low/mode/high    triangular;  median/sigma  lognormal;  mean/sd  beta
 #   calibrated_from  the v_calibration param it came from (tests check the SQL value
 #                    still falls inside [low, high] whenever the warehouse is rebuilt)
+#   per_engagement   true = the distribution is engagement-to-engagement spread (used in the
+#                    Day-90 calculation and the engagement simulator), NOT drawn once per trial
+#
+# Nodes with a `dist` (and no per_engagement) are uncertain: Monte Carlo draws one value per
+# trial. Nodes with only a `value` are levers or fixed facts; scenarios override them.
 #   note             why the range is as wide or narrow as it is
 #
 # Calibrated against the made-up warehouse as of 2026-09-30. Not Anthropic data.
@@ -46,13 +51,25 @@ demand:
   region_mix: {AMER: 0.55, EMEA: 0.30, APAC: 0.15}
   type_mix:
     value: {Greenfield: 0.52, Pattern-based: 0.31, Expansion: 0.17}
-    note: Requests in the last 6 months. Greenfield share falls as reuse rises (see flywheel).
+    note: Requests in the last 6 months. Only the Pattern-based to Expansion ratio is used; Greenfield comes from greenfield_share.
+  greenfield_share:
+    value: 0.52
+    dist: triangular
+    low: 0.44
+    mode: 0.52
+    high: 0.62
+    note: Share of new requests that are Greenfield at the start of the horizon (falls as reuse rises).
   greenfield_shift_per_reuse:
     value: 0.8
     note: Each +1pt of reuse moves 0.8pt of demand from Greenfield to Pattern-based / Expansion. Judgment.
   greenfield_growth_correlation:
     value: 0.5
     note: Monte Carlo draws demand growth and greenfield share with this rank correlation (new demand skews to new use cases).
+  backlog_abandon_rate:
+    value: 0.5
+    note: >
+      Share of unserved demand that walks away each month (becomes a capacity decline); the rest
+      waits in the backlog. Judgment; the history shows ~30% capacity declines at ~18-day waits.
 
 # ------------------------------------------------------------------ supply
 supply:
@@ -67,7 +84,15 @@ supply:
     calibrated_from: open_reqs
   hires_per_month:
     value: 2.3
-    note: Hiring plan lever (base = recent pace). Scenarios override this.
+    note: Hiring plan lever (base = recent pace). Reqs opened each month; hires land time_to_fill later. Scenarios override this.
+  hiring_region_mix:
+    value: {AMER: 0.55, EMEA: 0.30, APAC: 0.15}
+    note: Where new reqs are opened. Lever.
+  senior_share_of_hires:
+    value: 0.35
+  in_ramp_at_start:
+    value: 7
+    note: ICs hired in the last 3 months (~2.3/mo), still ramping at the start of the horizon; spread evenly over ramp months 1-3.
   manager_span:
     value: 8
     note: ICs per manager; manager hires are added automatically to hold the span.
@@ -125,9 +150,26 @@ overhead:
   harvest_share:
     value: 0.07
     note: LEVER, not uncertain. 0.03 before the 2026 productization push, 0.07 since. Productize scenario = 0.12.
+  reference_harvest_share:
+    value: 0.07
+    note: Harvest share during the calibration window (durations were measured at this level).
+  harvest_from_slack:
+    value: 0.0
+    note: >
+      Share of harvest time ABOVE the reference level that comes out of bench / fragmentation slack
+      instead of delivery hours. 0 = every extra harvest hour displaces a delivery hour (engagements
+      stretch). Judgment; the history has ~16% of deployable time unassigned, so some slack exists.
   target_utilization:
     value: 0.85
-    note: Share of deployable time the model will plan to fill; the rest absorbs fragmentation and region mismatch (bench ~12% in v_overhead_mix).
+    note: >
+      Share of a ramped IC's time the model will plan to staff on engagements (allocation); the rest
+      absorbs fragmentation and region mismatch (bench ~16% of deployable hours in v_overhead_mix).
+  reference_delivery_share:
+    value: 0.70
+    note: >
+      Delivery hours / all hours for a ramped IC during the calibration window:
+      (1 - PTO 0.07) x (1 - presales 0.10 - internal 0.08 - harvest 0.07). Durations were measured
+      at this level, so raising any overhead above it stretches engagements proportionally.
 
 # ------------------------------------------------------------------ cycle time
 cycle_time:
@@ -136,12 +178,14 @@ cycle_time:
     Greenfield:
       value: 96
       dist: lognormal
+      per_engagement: true
       median: 96
       sigma: 0.37
       calibrated_from: median_days_greenfield_base
     Pattern-based:
       value: 48
       dist: lognormal
+      per_engagement: true
       median: 48
       sigma: 0.45
       calibrated_from: median_days_pattern_based_base
@@ -149,6 +193,7 @@ cycle_time:
     Expansion:
       value: 38
       dist: lognormal
+      per_engagement: true
       median: 38
       sigma: 0.40
       calibrated_from: median_days_expansion_base
@@ -180,6 +225,7 @@ cycle_time:
   blocker_delay_weeks:
     value: 3.0
     dist: lognormal
+    per_engagement: true
     median: 3.0
     sigma: 0.5
   cancel_prob:
@@ -237,12 +283,15 @@ assets:
     high: 0.45
     note: Ceiling on effort covered by assets. Not observable yet (library is small); judgment.
   reuse_half_k:
-    value: 40
+    value: 60
     dist: triangular
-    low: 25
-    mode: 40
-    high: 60
-    note: Library size at which reuse reaches ~63% of its ceiling. Judgment.
+    low: 40
+    mode: 60
+    high: 90
+    note: >
+      Library size at which reuse reaches ~63% of its ceiling. Calibrated through the model:
+      k = 60 reproduces the measured 9% reuse ratio at the start of the horizon (k = 40 gives 12%).
+      tests/test_model.py checks this.
   greenfield_reuse_factor:
     value: 0.4
     note: Greenfield builds reuse 40% as much as pattern-based ones.

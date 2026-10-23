@@ -9,10 +9,13 @@ working session. The full build spec lives in [PLAN.md](PLAN.md); metric definit
 filling a resume gap: "can build a capacity or staffing model from scratch, explain every
 assumption in it, and pull the data yourself with SQL."
 
-**Status (as of 2026-10-22, end of Session 1):** Phase 1 of 5 complete, pushed to
+**Status (as of 2026-10-23, end of Session 2):** Phases 1 and 2 of 5 complete (warehouse, model
+engine, Monte Carlo, engagement simulator), plus a Productize sensitivity analysis and a reframed
+demo story. Pushed to
 [github.com/erasbleasp/fde-capacity-model](https://github.com/erasbleasp/fde-capacity-model) (private).
 
-**Next session starts with:** Phase 2, the model engine (`model/engine.py`). See the checklist under What's next.
+**Next session starts with:** Phase 3, the Streamlit dashboard (Scorecard, Supply, Outcomes pages).
+See the checklist under What's next.
 
 ---
 
@@ -38,6 +41,18 @@ assumption in it, and pull the data yourself with SQL."
 | 16 | **In the forward model, capacity declines are an output, not an input** (the input is fit rate, ~84%) | Declines happen because of the capacity gap; treating them as an input would be circular. |
 | 17 | **Inputs labeled as judgment** (wide Monte Carlo ranges): staffing exponent α, reuse ceiling, reuse half-saturation k, partner efficiency | 100 engagements can't identify them. Saying so is part of the demo. |
 | 18 | **GitHub repo is private for now** (`erasbleasp/fde-capacity-model`) | Make it public once it's polished enough to link in the application. |
+| 19 | **Capacity and effort are both in staffing weeks** (one FDE assigned full time for one week) | The first build mixed delivery hours with calendar weeks and understated coverage. Overhead is already inside measured durations. |
+| 20 | **Overhead acts by stretching durations relative to the calibration level** (`reference_delivery_share` = 0.70) | More harvest/presales/internal time means fewer delivery hours per staffed week, so engagements take longer. |
+| 21 | **Capacity vs demand is a monthly flow** (staffing weeks needed by engagements starting this month vs weeks available) | Simple and explainable. Exact in steady state; lags about one engagement length when things change fast. |
+| 22 | **Unserved demand: 50% walks away each month, the rest waits** (`backlog_abandon_rate`, judgment) | Produces capacity declines and a wait time (Little's Law) instead of assuming all excess demand is lost. |
+| 23 | **Reuse half-saturation k = 60, calibrated through the model** (was 40, judgment) | k = 60 reproduces the measured 9% reuse at month 0; k = 40 gave 12%. |
+| 24 | **Day-90 is computed analytically** (lognormal CDF, blocker delay integrated over 5 quantiles) | Fast enough for 2,000 trials; the engagement simulator samples the same formula and agrees within 1 pt (tested). |
+| 25 | **Monte Carlo includes process noise** (Poisson requests and hires, binomial exits) **but paired scenario comparisons turn it off** | Random draws depend on state, so two runs lose their pairing and pick up about ±35 engagements of noise unrelated to the lever. |
+| 26 | **Tornado = P10-to-P90 swing per input**, plus Spearman variance drivers from the Monte Carlo | The swing version is the easiest to explain; the Monte Carlo version catches what moves the spread. |
+| 27 | **New judgment setting `overhead.harvest_from_slack`** (default 0 = current behavior) | Tests whether extra harvest time comes out of delivery hours or unassigned (bench) time. |
+| 28 | **Story reframed: productizing hinges on the unmeasured reuse ceiling** | At current settings 12% harvest breaks even (wins 16% of paired trials); the ceiling alone swings it −14 to +41 engagements. Recommendation: hold harvest at 7–9%, measure the ceiling for 2 quarters, pre-commit to a decision rule (go to 12% if pattern-based coverage ≥ ~40% or greenfield reuse ≥ 60% of pattern-based). |
+| 29 | **Capacity recommendation framed as commit level + prioritization**, not just a hiring number | No lever mix tested reaches 90% coverage next half (4.6 hires/mo + 45 partner weeks gives ~35% odds). Matches the posting's "scenarios for hiring and prioritization." |
+| 30 | **Scenarios defined in `config/scenarios.yaml`**: Base, Hire-heavy (4.6 hires/mo), Partner-leverage (45 weeks/mo), Productize (12% harvest) | Overrides on assumptions.yaml keyed by dotted path; overriding an uncertain input pins it. |
 
 ## Actions taken
 
@@ -55,36 +70,73 @@ assumption in it, and pull the data yourself with SQL."
 - Installed the GitHub CLI (Homebrew), logged in as `erasbleasp`, set Git to use that login, and created the private repo `fde-capacity-model`. Pushed `main`.
 - Session ended with all work committed and pushed; tests at 35 passing.
 
+### Session 2 — 2026-10-23
+- Read Project Memory.md, confirmed the repo was clean, rebuilt the warehouse (35 tests passing).
+- Added engine inputs to `config/assumptions.yaml` (greenfield share as uncertain, backlog abandon
+  rate, hiring region mix, senior share of hires, ICs still ramping, `per_engagement` flags) and
+  created `config/scenarios.yaml`.
+- Built **Phase 2**:
+  - `model/params.py`: loads assumptions, applies overrides, draws inputs through a Gaussian copula
+    (demand growth ↔ greenfield share at 0.5 rank correlation).
+  - `model/engine.py`: `run_model()`, 24 monthly steps (supply, capacity, cycle time, demand,
+    allocation, outcomes, flywheel). ~10 ms per run; 2,000 trials in ~0.1 s.
+  - `model/montecarlo.py`: P(target), fan bands, confidence-vs-resources curves, tornado, variance
+    drivers, scenario table.
+  - `model/engagement.py`: single-engagement go-live simulator and staffing table.
+  - `model/run.py`: plain-text report (`python -m model.run`).
+- Fixed the staffing-weeks unit mismatch, calibrated k = 60, and corrected a loose test.
+- Wrote `tests/test_model.py` (20 tests): zero spread ⇒ Monte Carlo = single value, same seed ⇒ same
+  output, flat headcount with no hires/attrition, hires land after time to fill, manager span,
+  flow identities, partners never serve Greenfield, month 0 matches history, levers move the right
+  way, correlation, draw bounds, simulator matches engine. **55 tests passing.**
+- Found that Productize (12% harvest) roughly breaks even, then ran a **sensitivity analysis**
+  (`analysis/productize_sensitivity.py`, write-up in `docs/productize_sensitivity.md`): one setting
+  at a time with k re-fitted, two-way grid, favorable combination, paired Monte Carlo, harvest curve.
+- Rewrote PLAN.md's story (section 1) and 9-minute demo script (section 9) around the reframed
+  story, with every number checked against model output. Updated PLAN.md's model section and the
+  metric dictionary to match the engine.
+
 ### What the data shows (useful in the demo)
 - About 30% of requests that fit were declined in the last 6 months because the team was full, even with about 12% of FDE time unassigned.
 - The reuse ratio went from about 5% to about 9% after harvest time rose from 3% to 7% in January 2026. The library holds about 38 assets.
 - Day-90 productization is about 69% across mature cohorts. Spend is about 5× pre-kickoff 6 months after go-live.
 - Headcount is 40 (20 FDE, 14 Senior FDE, 6 Eng Manager). Time to fill is about 70 days (P50). Measured attrition is about 23%, which is noisy on a team this size.
 
+### What the model shows (base plan, made-up data)
+- Month 0 matches the history: Day-90 0.64 (0.69 measured), reuse 0.09, FDE utilization 0.58, headcount 41.
+- Requests grow ~6%/month (13 → ~50); hiring at 2.3/month takes headcount 41 → ~77. Coverage ~62% → ~40%.
+- P(coverage ≥ 90%, months 7–12) ≈ 10%. Confidence curve: 2 hires/mo → 7%, 4 → 22%, 6 → 41% (≈5-month hiring lag).
+- Demand inputs drive the uncertainty: monthly growth alone is ~45% of the variance in coverage.
+- Hire-heavy: coverage ~76%, +$16M over 24 months. Partner-leverage: ~66%, +32 engagements, +$5M.
+- Productize: reuse +3 pts, coverage and Day-90 flat; the reuse ceiling decides whether it pays (see decision 28).
+- Greenfield with 2 FDEs: P50 ~99 days, P80 ~136, 37% live by day 90; a third FDE → P80 ~106, 62%, for ~16% more staffing weeks.
+
 ## What's next
 
 - [x] **Push to GitHub**: private repo `erasbleasp/fde-capacity-model`
 - [ ] Make the repo public before linking it in the application
-- [ ] **Phase 2: model engine** (`model/engine.py`)
-  - [ ] Read `config/assumptions.yaml`; monthly steps over 24 months by segment × region
-  - [ ] Demand, supply (hiring, attrition, ramp, manager span), overhead, partners, flywheel, Day-90
-  - [ ] NumPy with a trials dimension; tests: zero spread ⇒ Monte Carlo = single value; same seed ⇒ same output; zero hires and zero attrition ⇒ flat headcount
-- [ ] **Phase 2b: Monte Carlo** (`model/montecarlo.py`, `model/engagement.py`)
-  - [ ] Draw from the distributions (triangular, lognormal, beta) plus the growth ↔ greenfield correlation
-  - [ ] Percentiles, P(target), confidence-vs-resources sweep, Monte Carlo tornado
-  - [ ] Single-engagement go-live simulator (P50/P80/P90 by staffing level, with and without assets)
+- [x] **Phase 2: model engine** (`model/engine.py`)
+- [x] **Phase 2b: Monte Carlo** (`model/montecarlo.py`, `model/engagement.py`)
+- [x] Productize sensitivity analysis and reframed demo story
 - [ ] **Phase 3: dashboard pages 1–3** (Scorecard, Supply, Outcomes) in Streamlit
+  - [ ] Add `streamlit` and `plotly` to requirements; app reads the model and the DuckDB views
+  - [ ] Show coverage as a 3-month rolling view (monthly demand is noisy) with P10–P90 bands
+- [ ] Add a **Blended** scenario and a **prioritization lever** (fit rate / which types to accept) for the recommendation step
 - [ ] **Phase 4**: Confidence page, Scenarios, Excel export, Data & Definitions page
 - [ ] **Phase 5**: deploy to Streamlit Community Cloud, 1-page memo, rehearse the demo script, optional Ask Claude panel
 
 ### Open questions
 - Commits are authored as `jaeger wells <jaegerwells2024@u.northwestern.edu>`, but the GitHub account is `erasbleasp`. Add that email to the GitHub account (Settings → Emails) or change the Git email, so commits show as yours.
 - Whether to add economics (fees, margin) beyond cost per engagement and consumption lift
+- Whether the 90% coverage target should be reset, given no lever mix reaches it next half
+- `model/run.py` prints counts with 3 decimals (e.g. 24.000); tidy the formatting
 
 ## How to resume
 
 ```bash
 cd "/Users/jaeger/Claude/Projects/FDE model demo"
 .venv/bin/python warehouse/build.py      # rebuild fde.duckdb (not committed)
-.venv/bin/python -m pytest tests -q      # expect 35 passed
+.venv/bin/python -m pytest tests -q      # expect 55 passed
+.venv/bin/python -m model.run            # model report (~2 s)
+.venv/bin/python -m analysis.productize_sensitivity   # Productize sensitivity (~16 s)
 ```

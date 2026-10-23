@@ -6,6 +6,8 @@ from in SQL, and the judgment calls behind it. Where a definition could be gamed
 
 Conventions
 - **Weeks** are 40-hour FDE weeks. A month is 4.33 weeks.
+- **Staffing weeks** (forward model): one FDE assigned full time to an engagement for one week.
+  Model capacity, demand, and gap are all in staffing weeks.
 - **As-of date** for the history is 2026-09-30. "Mature" means old enough to be judged
   (e.g. a kickoff cohort is mature for Day-90 once kickoff + 90 days ≤ as-of).
 - **Time tracking starts at history start (2025-04-01).** Engagements that kicked off earlier have
@@ -80,7 +82,7 @@ over engagements **closed** in the period (so the hours are complete).
 | **Attach rate** | accepted ÷ requests | `v_demand_monthly` |
 | **Declined – fit** | declined because the use case isn't a fit for FDE (wrong stage, no exec sponsor, etc.) | `v_demand_monthly` |
 | **Declined – capacity** | a fit, but declined because the team was full | `v_demand_monthly` |
-| **Gross demand (FDE-weeks)** | Σ requests × attach × base duration_type × FDEs_type | model |
+| **Gross demand (staffing weeks)** | Σ requests × fit rate × type share × effort per engagement_type | model |
 | **Type mix** | Greenfield (new build) / Pattern-based (built from an existing pattern) / Expansion (second use case at a live account) | `v_demand_monthly` |
 
 *Declined – capacity* is the cleanest signal of unmet demand; it's what hiring would have captured.
@@ -139,11 +141,12 @@ this; Phase 2 can switch to a survival-based fit.
 
 | Metric | Formula |
 |---|---|
-| **Coverage ratio** | deployable capacity (FDE + partner) ÷ gross demand, in FDE-weeks |
+| **Coverage ratio** | (FDE capacity + partner capacity usable on eligible work) ÷ demand arriving this month, in staffing weeks |
 | **Capacity gap** | capacity − demand (negative = short) |
-| **Backlog** | signed engagements not yet kicked off |
-| **Expected wait** | backlog ÷ kickoff rate (Little's Law) |
-| **Hires needed** | additional hires required for coverage ≥ target, accounting for time to fill and ramp |
+| **Backlog** | fit demand not yet started (engagements); 50% walks away each month as capacity declines |
+| **Expected wait** | backlog ÷ starts per month (Little's Law), in months |
+| **Hires needed** | ramped ICs that would close this month's gap: shortfall ÷ (4.33 × target utilization). Excludes time to fill and ramp, so act on it ~5 months early |
+| **Model reuse ratio** | effort-weighted reuse on engagements *starting* this month (the measured metric is at close and lags by about one engagement) |
 
 ## Outcomes & economics
 
