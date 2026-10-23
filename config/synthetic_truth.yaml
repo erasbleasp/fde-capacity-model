@@ -1,0 +1,84 @@
+# Parameters used to GENERATE the made-up 18-month history.
+# The SQL calibration views should recover these within tolerance (see tests/test_warehouse.py).
+# None of these numbers are Anthropic data.
+
+seed: 42
+start_date: 2025-04-01
+end_date: 2026-09-30            # as-of date
+burn_in_weeks: 26               # simulated before start_date so the history opens with work in flight
+
+regions: {AMER: 0.55, EMEA: 0.30, APAC: 0.15}
+segments: {Commercial: 0.65, Research: 0.15, Mission: 0.20}
+
+roster:
+  starting_hc: 22                # at the start of the warm-up period
+  role_mix: {FDE: 0.67, Senior FDE: 0.33}   # individual contributors
+  manager_span: 8               # hire an Eng Manager whenever ICs per manager exceeds this
+  # hires per month ramps linearly from start to end of history
+  hires_per_month_start: 1.0
+  hires_per_month_end: 2.5
+  annual_attrition: 0.15
+  time_to_fill_days: {low: 40, mode: 65, high: 120}
+  # share of a ramped FDE's deployable time, by month of tenure (month 1, 2, 3, 4+)
+  ramp: [0.25, 0.50, 0.75, 1.00]
+
+time:
+  hours_per_week: 40
+  pto_week_prob: 0.07           # chance a given week is a full PTO week
+  holiday_weeks: ["11-27", "12-22", "12-29"]   # MM-DD of week starts at 50% PTO
+  presales_share: 0.10          # of non-PTO hours
+  internal_share: 0.08
+  manager_extra_internal: 0.45  # managers spend most time managing
+  # harvest share steps up mid-history (a "productization push")
+  harvest_share_before: 0.03
+  harvest_share_after: 0.07
+  harvest_push_date: 2026-01-01
+
+demand:
+  requests_per_month_start: 6.0
+  monthly_growth: 0.05
+  decline_fit_prob: 0.15
+  # accept probability for fit requests, by deployable allocation in use at decision time
+  accept_prob_by_load: [[0.80, 0.95], [0.95, 0.60], [9.99, 0.30]]   # [load below, prob]
+  scoping_days: {low: 10, mode: 18, high: 35}
+  # signature -> earliest possible kickoff (customer onboarding, security, access)
+  mobilization_days: {low: 5, mode: 12, high: 30}
+  # greenfield share falls as the asset library grows: greenfield = base - slope * reuse_level
+  type_mix_base: {Greenfield: 0.65, Pattern-based: 0.22, Expansion: 0.13}
+  greenfield_shift_per_reuse: 0.8
+
+engagement:
+  # median weeks from kickoff to production at the reference staffing level
+  base_duration_weeks: {Greenfield: 14, Pattern-based: 7, Expansion: 5}
+  fdes: {Greenfield: 2.0, Pattern-based: 1.5, Expansion: 1.0}
+  ref_fdes: {Greenfield: 2.0, Pattern-based: 1.5, Expansion: 1.0}
+  staffing_alpha: 0.7
+  duration_sigma: 0.35
+  blocker_prob: 0.25
+  blocker_delay_weeks: {median: 3.0, sigma: 0.5}
+  cancel_prob: 0.06
+  handoff_weeks: 2
+  attrition_slip_weeks: 2
+  partner_led_prob_start: 0.10   # of Pattern-based / Expansion engagements
+  partner_led_prob_end: 0.35
+  partner_duration_factor: 1.3   # partners take ~1/0.77 as long
+
+assets:
+  starting_library: 6
+  # assets harvested per closed FDE-led engagement = Poisson(yield * harvest_share / 0.05)
+  yield_at_5pct: 0.6
+  monthly_decay: 0.03
+  reuse_max: 0.35                # max effort-weighted reuse ratio
+  reuse_half_k: 40               # library size scale: R = Rmax * (1 - exp(-L/k))
+  greenfield_reuse_factor: 0.4   # greenfield builds can reuse less
+  types: {eval_harness: 0.25, mcp_connector: 0.25, prompt_template: 0.20, agent_template: 0.15, reference_architecture: 0.15}
+
+consumption:
+  # monthly spend ($K) — lognormal medians
+  baseline_k: {Commercial: 20, Research: 35, Mission: 12}
+  post_golive_multiple: {median: 4.0, sigma: 0.5}
+  ramp_months: 4
+  not_live_multiple: 1.2
+  noise_sigma: 0.15
+
+partners: [Partner Alpha, Partner Beta, Partner Gamma, Partner Delta]
