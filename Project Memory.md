@@ -9,7 +9,8 @@ working session. The full build spec lives in [PLAN.md](PLAN.md); metric definit
 filling a resume gap: "can build a capacity or staffing model from scratch, explain every
 assumption in it, and pull the data yourself with SQL."
 
-**Status (as of 2026-10-22):** Phase 1 of 5 complete. Committed locally on `main`; GitHub push pending.
+**Status (as of 2026-10-22):** Phase 1 of 5 complete, pushed to
+[github.com/erasbleasp/fde-capacity-model](https://github.com/erasbleasp/fde-capacity-model) (private).
 
 ---
 
@@ -34,7 +35,7 @@ assumption in it, and pull the data yourself with SQL."
 | 15 | **Customer mobilization lag (5–30 days) before kickoff** | Without it, queue wait was 0 days, which is unrealistic. |
 | 16 | **In the forward model, capacity declines are an output, not an input** (the input is fit rate, ~84%) | Declines happen because of the capacity gap; treating them as an input would be circular. |
 | 17 | **Inputs labeled as judgment** (wide Monte Carlo ranges): staffing exponent α, reuse ceiling, reuse half-saturation k, partner efficiency | 100 engagements can't identify them. Saying so is part of the demo. |
-| 18 | **Default GitHub repo visibility**: pending the user's choice | — |
+| 18 | **GitHub repo is private for now** (`erasbleasp/fde-capacity-model`) | Make it public once it's polished enough to link in the application. |
 
 ## Actions taken
 
@@ -49,6 +50,7 @@ assumption in it, and pull the data yourself with SQL."
 - Wrote **config/assumptions.yaml**: forward-model inputs, each with a value, distribution, source, and note.
 - Wrote **tests**: 35 passing (integrity, metric definitions, truth recovery, assumption drift).
 - Ran `git init` and made the first commit on `main`.
+- Installed the GitHub CLI (Homebrew), logged in as `erasbleasp`, set Git to use that login, and created the private repo `fde-capacity-model`. Pushed `main`.
 
 ### What the data shows (useful in the demo)
 - About 30% of requests that fit were declined in the last 6 months because the team was full, even with about 12% of FDE time unassigned.
@@ -58,7 +60,8 @@ assumption in it, and pull the data yourself with SQL."
 
 ## What's next
 
-- [ ] **Push to GitHub** (blocked: needs the GitHub CLI or an empty repo URL, plus a visibility choice)
+- [x] **Push to GitHub**: private repo `erasbleasp/fde-capacity-model`
+- [ ] Make the repo public before linking it in the application
 - [ ] **Phase 2: model engine** (`model/engine.py`)
   - [ ] Read `config/assumptions.yaml`; monthly steps over 24 months by segment × region
   - [ ] Demand, supply (hiring, attrition, ramp, manager span), overhead, partners, flywheel, Day-90
@@ -72,7 +75,6 @@ assumption in it, and pull the data yourself with SQL."
 - [ ] **Phase 5**: deploy to Streamlit Community Cloud, 1-page memo, rehearse the demo script, optional Ask Claude panel
 
 ### Open questions
-- GitHub repo name and visibility (public helps the application; private until polished?)
 - Whether to add economics (fees, margin) beyond cost per engagement and consumption lift
 
 ## How to resume
