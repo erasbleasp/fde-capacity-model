@@ -9,13 +9,14 @@ working session. The full build spec lives in [PLAN.md](PLAN.md); metric definit
 filling a resume gap: "can build a capacity or staffing model from scratch, explain every
 assumption in it, and pull the data yourself with SQL."
 
-**Status (as of 2026-10-23, end of Session 2):** Phases 1 and 2 of 5 complete (warehouse, model
-engine, Monte Carlo, engagement simulator), plus a Productize sensitivity analysis and a reframed
-demo story. Pushed to
-[github.com/erasbleasp/fde-capacity-model](https://github.com/erasbleasp/fde-capacity-model) (private).
+**Status (as of 2026-10-23, end of Session 3):** Phases 1–3 of 5 complete (warehouse, model engine,
+Monte Carlo, dashboard pages 1–3 in an Economist-style design). **Live at
+[jwells-fde-capacity-model.streamlit.app](https://jwells-fde-capacity-model.streamlit.app/)**; repo is
+public at [github.com/erasbleasp/fde-capacity-model](https://github.com/erasbleasp/fde-capacity-model).
 
-**Next session starts with:** Phase 3, the Streamlit dashboard (Scorecard, Supply, Outcomes pages).
-See the checklist under What's next.
+**Next session starts with:** Phase 4 — the Confidence page (confidence-vs-resources curve, engagement
+planner, tornado), then Scenarios (with a Blended scenario and a prioritization lever) and Data &
+Definitions. See the checklist under What's next.
 
 ---
 
@@ -40,7 +41,7 @@ See the checklist under What's next.
 | 15 | **Customer mobilization lag (5–30 days) before kickoff** | Without it, queue wait was 0 days, which is unrealistic. |
 | 16 | **In the forward model, capacity declines are an output, not an input** (the input is fit rate, ~84%) | Declines happen because of the capacity gap; treating them as an input would be circular. |
 | 17 | **Inputs labeled as judgment** (wide Monte Carlo ranges): staffing exponent α, reuse ceiling, reuse half-saturation k, partner efficiency | 100 engagements can't identify them. Saying so is part of the demo. |
-| 18 | **GitHub repo is private for now** (`erasbleasp/fde-capacity-model`) | Make it public once it's polished enough to link in the application. |
+| 18 | ~~GitHub repo is private for now~~ — superseded by 39 | — |
 | 19 | **Capacity and effort are both in staffing weeks** (one FDE assigned full time for one week) | The first build mixed delivery hours with calendar weeks and understated coverage. Overhead is already inside measured durations. |
 | 20 | **Overhead acts by stretching durations relative to the calibration level** (`reference_delivery_share` = 0.70) | More harvest/presales/internal time means fewer delivery hours per staffed week, so engagements take longer. |
 | 21 | **Capacity vs demand is a monthly flow** (staffing weeks needed by engagements starting this month vs weeks available) | Simple and explainable. Exact in steady state; lags about one engagement length when things change fast. |
@@ -53,6 +54,16 @@ See the checklist under What's next.
 | 28 | **Story reframed: productizing hinges on the unmeasured reuse ceiling** | At current settings 12% harvest breaks even (wins 16% of paired trials); the ceiling alone swings it −14 to +41 engagements. Recommendation: hold harvest at 7–9%, measure the ceiling for 2 quarters, pre-commit to a decision rule (go to 12% if pattern-based coverage ≥ ~40% or greenfield reuse ≥ 60% of pattern-based). |
 | 29 | **Capacity recommendation framed as commit level + prioritization**, not just a hiring number | No lever mix tested reaches 90% coverage next half (4.6 hires/mo + 45 partner weeks gives ~35% odds). Matches the posting's "scenarios for hiring and prioritization." |
 | 30 | **Scenarios defined in `config/scenarios.yaml`**: Base, Hire-heavy (4.6 hires/mo), Partner-leverage (45 weeks/mo), Productize (12% harvest) | Overrides on assumptions.yaml keyed by dotted path; overriding an uncertain input pins it. |
+| 31 | **Report numbers show 2 decimal places** (user preference) | 3 decimals made counts read like `24.000`. |
+| 32 | **Every tile and target uses one window: months 7–12 (Apr–Sep 2027)** | Day-90 and reuse used months 10–12; one window keeps the tiles and the report consistent. |
+| 33 | **Dashboard = Streamlit multipage app; a filter row (scenario + hires, harvest, partner levers) sits above every page and scopes all of it** | One set of controls, numbers always agree across pages. Pages live in `app/views/` (a `pages/` folder triggers Streamlit's own sidebar). |
+| 34 | **Charts follow the dataviz skill's method**: validated palette, legend or direct labels plus a table view on every chart, no dual axes (the flywheel is three small charts), status = icon + label | Readable for colorblind viewers and without hover; the method is what the skill checks. |
+| 35 | **Added `mean_days_to_prod` (blockers included)** for actual-vs-forecast charts | The forecast "median" excluded blockers and dropped ~11 days at the forecast start; the mean matches the warehouse definition. |
+| 36 | **Visual design adapted from The Economist's visual style guide (v1.2, May 2017)** — design-system.economist.com was blocked from this environment | Red tag + rule, bold title with units subtitle, right-hand axis labels, black baseline, shaded FORECAST panels, red reference lines, number boxes on #E9EDF0, serif masthead. |
+| 37 | **Brand deviations**: yellow one step darker (#C89608); green and purple dropped (grey at every step, fail CVD) → greys for categories past four; Fira Sans / Fira Sans Condensed / Source Serif 4 stand in for licensed fonts; no logo; README says "not affiliated" | Every palette passes the dataviz validator (adjacent and all-pairs); no impersonation. |
+| 38 | **Host on Streamlit Community Cloud**, linked or embedded from a personal site — not Vercel | Streamlit needs a long-running Python server with websockets; Vercel and static site hosts can't run it. Free, redeploys on push. |
+| 39 | **Repo made public** (supersedes 18) | Simplest deploy path; lets interviewers read the code behind the dashboard. Nothing sensitive in the repo. |
+| 40 | **Dashboard cache: Monte Carlo results as float32, 8 lever settings max (~90 MB)** | One run was ~22 MB; 24 cached settings risked ~500 MB on a free host. |
 
 ## Actions taken
 
@@ -97,6 +108,24 @@ See the checklist under What's next.
   story, with every number checked against model output. Updated PLAN.md's model section and the
   metric dictionary to match the engine.
 
+### Session 3 — 2026-10-23
+- Report (`model/run.py`) switched to 2 decimal places.
+- Built **Phase 3, the Streamlit dashboard** (`app/`): entry file with masthead and filter row;
+  `data.py` (cached model runs, warehouse queries, builds `fde.duckdb` if missing); `ui.py` (design
+  tokens, chart helpers, number boxes, table views); pages Scorecard, Supply, Outcomes in `app/views/`.
+- Loaded the dataviz skill, validated the palette, checked every page in the browser, and fixed:
+  deprecated arguments, label collisions, wrapping tiles, rotated quarter labels, and the
+  days-to-production mismatch (decision 35).
+- Added `tests/test_app.py` (every page renders; scenario switch moves the levers). **59 tests passing.**
+- Restyled the dashboard on The Economist's chart style guide (decisions 36–37). The theme first
+  crashed silently (Streamlit takes one font per URL); caught via the server log and fixed.
+- Installed poppler (Homebrew) to read the style guide PDF.
+- Prepared for Streamlit Community Cloud: README, deploy notes, leaner cache (decision 40); verified
+  from a fresh copy on Python 3.12 (clean install, 59 tests, real server, warehouse built on launch).
+- Made the repo public, user deployed to
+  [jwells-fde-capacity-model.streamlit.app](https://jwells-fde-capacity-model.streamlit.app/); checked
+  all three live pages match local numbers; added the link to README and PLAN.md.
+
 ### What the data shows (useful in the demo)
 - About 30% of requests that fit were declined in the last 6 months because the team was full, even with about 12% of FDE time unassigned.
 - The reuse ratio went from about 5% to about 9% after harvest time rose from 3% to 7% in January 2026. The library holds about 38 assets.
@@ -111,32 +140,41 @@ See the checklist under What's next.
 - Hire-heavy: coverage ~76%, +$16M over 24 months. Partner-leverage: ~66%, +32 engagements, +$5M.
 - Productize: reuse +3 pts, coverage and Day-90 flat; the reuse ceiling decides whether it pays (see decision 28).
 - Greenfield with 2 FDEs: P50 ~99 days, P80 ~136, 37% live by day 90; a third FDE → P80 ~106, 62%, for ~16% more staffing weeks.
+- FDE coverage by region (months 7–12): AMER ~58%, EMEA ~58%, **APAC ~39%** — where the next reqs should go.
 
 ## What's next
 
 - [x] **Push to GitHub**: private repo `erasbleasp/fde-capacity-model`
-- [ ] Make the repo public before linking it in the application
+- [x] Make the repo public
 - [x] **Phase 2: model engine** (`model/engine.py`)
 - [x] **Phase 2b: Monte Carlo** (`model/montecarlo.py`, `model/engagement.py`)
 - [x] Productize sensitivity analysis and reframed demo story
-- [ ] **Phase 3: dashboard pages 1–3** (Scorecard, Supply, Outcomes) in Streamlit
-  - [ ] Add `streamlit` and `plotly` to requirements; app reads the model and the DuckDB views
-  - [ ] Show coverage as a 3-month rolling view (monthly demand is noisy) with P10–P90 bands
-- [ ] Add a **Blended** scenario and a **prioritization lever** (fit rate / which types to accept) for the recommendation step
-- [ ] **Phase 4**: Confidence page, Scenarios, Excel export, Data & Definitions page
-- [ ] **Phase 5**: deploy to Streamlit Community Cloud, 1-page memo, rehearse the demo script, optional Ask Claude panel
+- [x] **Phase 3: dashboard pages 1–3** (Scorecard, Supply, Outcomes), Economist-style design
+- [x] Deploy to Streamlit Community Cloud (pulled forward from Phase 5)
+- [ ] **Phase 4**
+  - [ ] **Confidence** page: P(target) tiles, confidence-vs-resources curve (hires/month and partner weeks), coverage fan, engagement planner (go-live CDF by staffing, P80 date for the SOW), Monte Carlo tornado
+  - [ ] **Scenarios** page: Base / Hire-heavy / Partner-leverage / Productize side by side on medians *and* spread; add a **Blended** scenario and a **prioritization lever** (which demand to accept) for the recommendation
+  - [ ] **Data & Definitions** page: metric dictionary, key SQL views, assumption → source table
+  - [ ] **Excel export** of assumptions and monthly outputs (for a finance reviewer)
+- [ ] **Phase 5**
+  - [ ] 1-page memo with the recommendation (capacity commit level + prioritization; hold harvest at 7–9%, measure the reuse ceiling, decision rule)
+  - [ ] Update PLAN.md's demo script to walk the live dashboard pages; rehearse it
+  - [ ] Link the dashboard from a personal site / the application
+  - [ ] Optional: Ask Claude panel explaining scenario differences
 
 ### Open questions
 - Whether to add economics (fees, margin) beyond cost per engagement and consumption lift
 - Whether the 90% coverage target should be reset, given no lever mix reaches it next half
-- `model/run.py` prints counts with 3 decimals (e.g. 24.000); tidy the formatting
+- Dark mode for the dashboard (needs its own validated palette steps)
 
 ## How to resume
 
 ```bash
 cd "/Users/jaeger/Claude/Projects/FDE model demo"
 .venv/bin/python warehouse/build.py      # rebuild fde.duckdb (not committed)
-.venv/bin/python -m pytest tests -q      # expect 55 passed
+.venv/bin/python -m pytest tests -q      # expect 59 passed
 .venv/bin/python -m model.run            # model report (~2 s)
+.venv/bin/streamlit run app/streamlit_app.py   # dashboard at http://localhost:8501
+# live: https://jwells-fde-capacity-model.streamlit.app/ (redeploys on every push to main)
 .venv/bin/python -m analysis.productize_sensitivity   # Productize sensitivity (~16 s)
 ```
