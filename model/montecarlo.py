@@ -52,10 +52,11 @@ class Target:
 
 
 def default_targets(tree: dict) -> list[Target]:
+    """All targets are judged over the same window: months 7-12 of the horizon (the next half after this one)."""
     t = tree["targets"]
     return [Target("coverage", 6, 12, ">=", t["coverage"]),
-            Target("day90", 9, 12, ">=", t["day90_rate"]),
-            Target("reuse_ratio", 9, 12, ">=", t["reuse_ratio"])]
+            Target("day90", 6, 12, ">=", t["day90_rate"]),
+            Target("reuse_ratio", 6, 12, ">=", t["reuse_ratio"])]
 
 
 def prob(res: Result, target: Target) -> float:

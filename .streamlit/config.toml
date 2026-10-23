@@ -1,0 +1,19 @@
+[theme]
+base = "light"
+primaryColor = "#006BA2"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#E9EDF0"
+textColor = "#0C0C0C"
+borderColor = "#B7C6CF"
+# Open substitutes for The Economist's licensed faces: Fira Sans / Fira Sans Condensed for
+# Econ Sans (humanist, with a condensed cut for chart labels) and Source Serif 4 for Milo.
+# Streamlit takes one family per URL; Fira Sans Condensed is loaded in app/ui.py's CSS.
+font = "'Fira Sans':https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap, sans-serif"
+headingFont = "'Source Serif 4':https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap, serif"
+
+[server]
+headless = true
+runOnSave = true
+
+[browser]
+gatherUsageStats = false

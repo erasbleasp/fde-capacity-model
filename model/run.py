@@ -29,7 +29,7 @@ def main():
     args = ap.parse_args()
     pd.set_option("display.width", 200)
     pd.set_option("display.max_columns", 20)
-    pd.set_option("display.float_format", lambda v: f"{v:,.3f}")
+    pd.set_option("display.float_format", lambda v: f"{v:,.2f}")
 
     tree = load_assumptions()
     scenarios = load_scenarios()
@@ -65,11 +65,11 @@ def main():
     section("What drives coverage (months 7-12): swing from each input's P10 to P90")
     tor = tornado(tree, "coverage", 6, 12, overrides=ov)
     print(f"base = {tor.attrs['base']:.2f}")
-    print(tor.head(10).round(3).to_string(index=False))
+    print(tor.head(10).round(2).to_string(index=False))
 
     section("Scenarios (Monte Carlo, target windows as above)")
     st = scenario_table(tree, scenarios, targets, n=args.trials)
-    print(st.set_index("scenario").T.round(3).to_string())
+    print(st.set_index("scenario").T.round(2).to_string())
 
     section("Engagement planner: Greenfield go-live by staffing level")
     print(staffing_table(tree, "Greenfield", overrides=ov).round(2).to_string(index=False))

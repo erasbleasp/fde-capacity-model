@@ -284,6 +284,13 @@ def run_model(p: Params, process_noise: bool = False, seed: int | None = None) -
         rec("reuse_ratio", reuse_ratio)
         rec("day90", day90)
         rec("median_days_to_prod", (served_k * med_days).sum(axis=1) / np.maximum(served, 1e-12))
+        # expected kickoff -> production days for engagements that go live, blockers included
+        # (comparable to the warehouse's average days_to_prod)
+        blocker_days = col(blocker_p) * blocker_mean_w * 7
+        mean_fde = med_days * lognormal_mean + blocker_days
+        mean_partner = med_days / col(efficiency) * lognormal_mean + blocker_days
+        rec("mean_days_to_prod", ((fde_k * mean_fde).sum(axis=1) + (partner_k * mean_partner).sum(axis=1))
+            / np.maximum(served, 1e-12))
         rec("cost", cost)
         rec("cost_per_engagement", cost / np.maximum(served, 1e-12))
         rec("new_by_type", new)

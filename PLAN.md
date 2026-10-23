@@ -74,13 +74,19 @@ tests/
   test_warehouse.py        # integrity, metric definitions, views recover the truth parameters
   test_assumptions.py      # every `calibrated_from` assumption still matches v_calibration
   test_model.py            # engine mechanics, calibration at month 0, levers, Monte Carlo, simulator
+  test_app.py              # dashboard smoke test: every page renders; scenario switch moves the levers
 model/
   params.py                # load assumptions, apply overrides, draw inputs (Gaussian copula)
   engine.py                # run_model(params): monthly steps, vectorized over trials
   montecarlo.py            # run_mc, P(target), fan bands, confidence curves, tornado, scenarios
   engagement.py            # single-engagement go-live simulator and staffing table
   run.py                   # plain-text report: python -m model.run
-app/     (Phase 3)
+app/
+  streamlit_app.py         # entry: header, filter row (scenario + 3 levers) scoping every page, navigation
+  data.py                  # cached model runs (single-value + 2,000 trials) and warehouse queries
+  ui.py                    # palette tokens, Plotly layout, fan charts, stat tiles, table views
+  views/                   # scorecard.py, supply.py, outcomes.py
+.streamlit/config.toml     # light theme + fonts (Economist-style palette and typography)
 ```
 
 ## 4. Data layer (Phase 1)
@@ -181,11 +187,38 @@ independent and called out as a simplification.
 
 Streamlit + Plotly, deployed to Streamlit Community Cloud, with an Excel export.
 
-1. **Scorecard** — KPI tiles (Day-90, Reuse, Coverage, Utilization, Gap, Hires needed), each
-   with a P10–P90 range under the P50; demand vs capacity; capacity waterfall; levers.
-2. **Supply** — headcount bridge by region × role; ramp-adjusted effective HC.
-3. **Outcomes** — day-90 cohort curves (30/60/90), flywheel (library ↗, reuse ↗, duration ↘),
-   consumption after go-live.
+**Built (Phase 3).** A filter row — scenario plus three levers (hires per month, harvest time,
+partner weeks per month) — sits above every page and scopes everything below it. Every tile and
+target uses one window: months 7–12 (Apr–Sep 2027). Every chart has a table view.
+
+**Visual design: adapted from The Economist's visual style guide** (v1.2, May 2017 — the
+design-system.economist.com site was not reachable from this environment, so the 2017 chart guide
+was the source):
+- Each chart: red tag + hairline red rule, short bold title, plain subtitle naming units, horizontal
+  gridlines only with labels on the right, black baseline with short ticks, light source line.
+- Forecast periods are a neutral shaded "FORECAST" highlight panel; targets are red reference lines.
+- Number boxes on the guide's box grey (#E9EDF0) with the red tag; serif masthead with a red fly title.
+- Palette: the guide's colour order — blue #006BA2, cyan #3EBCD2, yellow, dark red #A81829 — with
+  yellow one step darker on the guide's own scale (#C89608) so the set passes the dataviz validator
+  (adjacent and all-pairs). The guide's green and purple read as grey at every step, so categories
+  past four fold into the guide's greys (#758D99, #B7C6CF). Ordinal ramp from the guide's blue scale.
+- Fonts: Econ Sans and Milo are licensed, so Fira Sans / Fira Sans Condensed and Source Serif 4 stand
+  in (Google Fonts). No logo or wordmark.
+
+1. **Scorecard** — six tiles (coverage, Day-90, reuse, utilization, gap, FDEs short at P80), each
+   P50 with P10–P90 and P(target) as icon + label; demand vs capacity fan; 3-month rolling coverage
+   vs the 90% target; capacity waterfall (headcount weeks → ramp → unassigned buffer → FDE capacity
+   → partners → total, vs demand).
+2. **Supply** — headcount actual + forecast; hires and exits by quarter (actual | forecast P50);
+   headcount by region × role, now vs Sep 2028; FDE coverage by region (APAC is the thin one);
+   where FDE time goes (actual monthly hours mix).
+3. **Outcomes** — Day-90 actual quarterly cohorts + forecast; cohort curves (by day 30/60/90,
+   ordinal blue ramp); flywheel as three small multiples (library, reuse, average days to
+   production — actual + forecast); starts by type; customer spend after go-live.
+
+Known limits: light theme only (dark mode not yet stepped and validated); fonts load from Google
+Fonts, so offline viewing falls back to system fonts; forecast Day-90 starts a few points below the
+recent cohort average (within cohort noise).
 4. **Confidence** — P(target) tiles, **confidence-vs-resources curve** (x = hires/qtr or partner
    weeks, y = P(coverage ≥ 90%)), demand/capacity fan chart, engagement planner (go-live CDF by
    staffing), Monte Carlo tornado.
@@ -201,8 +234,8 @@ Streamlit + Plotly, deployed to Streamlit Community Cloud, with an Excel export.
 | 1 | Plan, metric dictionary, assumptions with distributions, data generator, DuckDB tables + views, tests | **done** |
 | 2 | Vectorized model engine + tests (zero spread ⇒ Monte Carlo = single-value; same seed ⇒ same output) | **done** |
 | 2b | Monte Carlo runner, engagement simulator, percentile summaries | **done** |
-| 3 | Dashboard pages 1–3 | next |
-| 4 | Confidence page, scenarios, tornado, Excel export, definitions page | |
+| 3 | Dashboard pages 1–3 | **done** |
+| 4 | Confidence page, scenarios, tornado, Excel export, definitions page | next |
 | 5 | Deploy, 1-page memo, 7-minute demo script, optional Ask Claude panel | |
 
 ## 9. Demo script (~9 minutes)
@@ -253,4 +286,5 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python warehouse/build.py      # builds fde.duckdb and prints a summary
 .venv/bin/python -m pytest tests -q
 .venv/bin/python -m model.run            # model report: plan, Monte Carlo, drivers, scenarios, planner
+.venv/bin/streamlit run app/streamlit_app.py   # dashboard at http://localhost:8501
 ```
