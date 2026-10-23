@@ -9,8 +9,10 @@ working session. The full build spec lives in [PLAN.md](PLAN.md); metric definit
 filling a resume gap: "can build a capacity or staffing model from scratch, explain every
 assumption in it, and pull the data yourself with SQL."
 
-**Status (as of 2026-10-22):** Phase 1 of 5 complete, pushed to
+**Status (as of 2026-10-22, end of Session 1):** Phase 1 of 5 complete, pushed to
 [github.com/erasbleasp/fde-capacity-model](https://github.com/erasbleasp/fde-capacity-model) (private).
+
+**Next session starts with:** Phase 2, the model engine (`model/engine.py`). See the checklist under What's next.
 
 ---
 
@@ -51,6 +53,7 @@ assumption in it, and pull the data yourself with SQL."
 - Wrote **tests**: 35 passing (integrity, metric definitions, truth recovery, assumption drift).
 - Ran `git init` and made the first commit on `main`.
 - Installed the GitHub CLI (Homebrew), logged in as `erasbleasp`, set Git to use that login, and created the private repo `fde-capacity-model`. Pushed `main`.
+- Session ended with all work committed and pushed; tests at 35 passing.
 
 ### What the data shows (useful in the demo)
 - About 30% of requests that fit were declined in the last 6 months because the team was full, even with about 12% of FDE time unassigned.
@@ -75,6 +78,7 @@ assumption in it, and pull the data yourself with SQL."
 - [ ] **Phase 5**: deploy to Streamlit Community Cloud, 1-page memo, rehearse the demo script, optional Ask Claude panel
 
 ### Open questions
+- Commits are authored as `jaeger wells <jaegerwells2024@u.northwestern.edu>`, but the GitHub account is `erasbleasp`. Add that email to the GitHub account (Settings → Emails) or change the Git email, so commits show as yours.
 - Whether to add economics (fees, margin) beyond cost per engagement and consumption lift
 
 ## How to resume
