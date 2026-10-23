@@ -4,7 +4,8 @@ A demand, capacity and staffing model for a Forward Deployed Engineering team, w
 layer that shows how certain the plan is at a given level of resourcing, and a Streamlit dashboard
 to explore it.
 
-**Live dashboard:** _link added after deploying to Streamlit Community Cloud_
+**Live dashboard:** https://jwells-fde-capacity-model.streamlit.app/ (Streamlit Community Cloud; if it has
+been idle it takes a moment to wake up)
 
 > All data here is **made up**, generated from documented parameters (`config/synthetic_truth.yaml`).
 > None of it is Anthropic data.

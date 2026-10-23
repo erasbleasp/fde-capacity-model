@@ -291,6 +291,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
 ### Deploying (Streamlit Community Cloud)
 
+- Live at https://jwells-fde-capacity-model.streamlit.app/ (redeploys on every push to `main`).
 - Entry file: `app/streamlit_app.py`; branch `main`; Python 3.12 (Community Cloud's default —
   tested from a fresh clone with all 59 tests passing).
 - Dependencies come from `requirements.txt`; theme and fonts from `.streamlit/config.toml` at the
