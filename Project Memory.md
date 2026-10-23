@@ -92,6 +92,7 @@ See the checklist under What's next.
 - Found that Productize (12% harvest) roughly breaks even, then ran a **sensitivity analysis**
   (`analysis/productize_sensitivity.py`, write-up in `docs/productize_sensitivity.md`): one setting
   at a time with k re-fitted, two-way grid, favorable combination, paired Monte Carlo, harvest curve.
+- Added the commit email to the `erasbleasp` GitHub account; confirmed all commits now link to it.
 - Rewrote PLAN.md's story (section 1) and 9-minute demo script (section 9) around the reframed
   story, with every number checked against model output. Updated PLAN.md's model section and the
   metric dictionary to match the engine.
@@ -126,7 +127,6 @@ See the checklist under What's next.
 - [ ] **Phase 5**: deploy to Streamlit Community Cloud, 1-page memo, rehearse the demo script, optional Ask Claude panel
 
 ### Open questions
-- Commits are authored as `jaeger wells <jaegerwells2024@u.northwestern.edu>`, but the GitHub account is `erasbleasp`. Add that email to the GitHub account (Settings → Emails) or change the Git email, so commits show as yours.
 - Whether to add economics (fees, margin) beyond cost per engagement and consumption lift
 - Whether the 90% coverage target should be reset, given no lever mix reaches it next half
 - `model/run.py` prints counts with 3 decimals (e.g. 24.000); tidy the formatting
