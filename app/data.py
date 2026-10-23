@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 import duckdb
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -52,13 +53,16 @@ def lever_default(scenario: str, path: str) -> float:
     return float(node["value"] if isinstance(node, dict) else node)
 
 
-@st.cache_data(show_spinner="Running 2,000 Monte Carlo trials…", max_entries=24)
+@st.cache_data(show_spinner="Running 2,000 Monte Carlo trials…", max_entries=8)
 def run(overrides: tuple) -> dict[str, Result]:
-    """overrides: sorted tuple of (path, value). Returns the single-value plan and the Monte Carlo run."""
+    """overrides: sorted tuple of (path, value). Returns the single-value plan and the Monte Carlo run.
+    Monte Carlo series are kept as float32 (~11 MB per run) and only the 8 most recent lever settings
+    are cached, so memory stays well inside a free hosting tier."""
     tree = assumptions()
     ov = dict(overrides)
     point = run_model(point_params(tree, ov))
     mc, _ = run_mc(tree, overrides=ov)
+    mc.series = {k: v.astype(np.float32) for k, v in mc.series.items()}
     return dict(point=point, mc=mc)
 
 

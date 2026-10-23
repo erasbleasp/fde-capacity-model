@@ -288,3 +288,12 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m model.run            # model report: plan, Monte Carlo, drivers, scenarios, planner
 .venv/bin/streamlit run app/streamlit_app.py   # dashboard at http://localhost:8501
 ```
+
+### Deploying (Streamlit Community Cloud)
+
+- Entry file: `app/streamlit_app.py`; branch `main`; Python 3.12 (Community Cloud's default —
+  tested from a fresh clone with all 59 tests passing).
+- Dependencies come from `requirements.txt`; theme and fonts from `.streamlit/config.toml` at the
+  repo root. No secrets needed.
+- `fde.duckdb` isn't committed: the app builds it on first launch (~1 s).
+- Memory: Monte Carlo results are cached as float32 (~11 MB per lever setting), 8 settings at most.
