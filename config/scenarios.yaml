@@ -21,6 +21,11 @@ Productize:
   overrides:
     overhead.harvest_share: 0.12
 
+Better matching:
+  description: Assign 90% of FDE delivery time instead of ~82% (skills pools, cross-region staffing, scheduling).
+  overrides:
+    overhead.target_utilization: 0.90
+
 Prioritize:
   description: Take on 80% of fit Greenfield requests; turn the rest down up front.
   overrides:

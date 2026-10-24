@@ -6,7 +6,7 @@ working session. The full build spec lives in [PLAN.md](PLAN.md); metric definit
 
 **Goal:** a working FDE capacity model and dashboard to demo for Anthropic's
 [GTM Strategy & Operations, FDE](https://job-boards.greenhouse.io/anthropic/jobs/5427938008) role,
-filling a resume gap: "can build a capacity or staffing model from scratch, explain every
+showing the posting's ask: "can build a capacity or staffing model from scratch, explain every
 assumption in it, and pull the data yourself with SQL."
 
 **Status (as of 2026-10-24, end of Session 4):** Phases 1–4 complete and Phase 5's core done: six-page

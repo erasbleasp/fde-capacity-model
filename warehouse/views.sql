@@ -254,7 +254,11 @@ WITH last_full AS (
 ), recent AS (
     SELECT * FROM last_full ORDER BY month DESC LIMIT 6
 ), growth AS (
-    SELECT exp(regr_slope(ln(requests), datediff('month', (SELECT history_start FROM meta), month))) - 1 AS g
+    SELECT exp(regr_slope(ln(requests), datediff('month', (SELECT history_start FROM meta), month))) - 1 AS g,
+           -- trend level at the as-of month: a trailing average lags a growing series by ~3 months
+           exp(regr_intercept(ln(requests), datediff('month', (SELECT history_start FROM meta), month))
+               + regr_slope(ln(requests), datediff('month', (SELECT history_start FROM meta), month))
+                 * datediff('month', (SELECT history_start FROM meta), (SELECT date_trunc('month', as_of) FROM meta))) AS level
     FROM last_full
 ), hc AS (
     SELECT month, sum(hc_start) AS hc_start, sum(hc_end) AS hc_end, sum(exits) AS exits, sum(hires) AS hires
@@ -278,6 +282,7 @@ WITH last_full AS (
 )
           SELECT 'requests_per_month'      AS param, avg(requests)               AS value, 'requests/mo, last 6 full months' AS unit, 'v_demand_summary' AS source FROM recent
 UNION ALL SELECT 'monthly_demand_growth',    g,                                 'log-linear trend',            'v_demand_summary' FROM growth
+UNION ALL SELECT 'requests_per_month_trend', level,                             'requests/mo at as-of, trend fit', 'v_demand_summary' FROM growth
 UNION ALL SELECT 'attach_rate_mean',         sum(accepted) / sum(requests - pending), 'share, last 6 months',  'v_demand_summary' FROM recent
 UNION ALL SELECT 'attach_rate_sd',           stddev_samp(attach_rate),          'monthly sd, last 6 months',   'v_demand_summary' FROM recent
 UNION ALL SELECT 'decline_fit_rate',         sum(declined_fit) / sum(requests - pending), 'share, all history', 'v_demand_summary' FROM last_full
@@ -310,6 +315,11 @@ UNION ALL SELECT 'internal_share_ic', sum(t.hours) FILTER (category = 'internal'
           FROM time_entries t JOIN roster r USING (fde_id), meta
           WHERE r.role <> 'Eng Manager' AND t.week_start - r.hire_date >= 150
             AND t.week_start >= date_trunc('month', meta.as_of) - INTERVAL 3 MONTH
+UNION ALL SELECT 'planned_allocation', sum(t.hours) FILTER (category = 'deploy') / sum(t.hours) FILTER (category IN ('deploy', 'bench')),
+          'deploy / (deploy + unassigned) hours, ramped ICs, last 6 months', 'v_overhead_mix'
+          FROM time_entries t JOIN roster r USING (fde_id), meta
+          WHERE r.role <> 'Eng Manager' AND t.week_start - r.hire_date >= 150
+            AND t.week_start >= date_trunc('month', meta.as_of) - INTERVAL 6 MONTH
 UNION ALL SELECT 'partner_weeks_per_month', sum(c.partner_hours) / 40 / 6,
           'partner hours / 40, kicked off last 6 months', 'v_cycle_times'
           FROM v_cycle_times c, meta WHERE c.partner_led AND c.kickoff_date > meta.as_of - 183

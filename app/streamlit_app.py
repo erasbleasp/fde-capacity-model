@@ -28,7 +28,7 @@ ui.masthead("FDE planning · made-up data", "FDE capacity and outcomes",
 
 # ---------------------------------------------------------------- filter row (scopes every page)
 names = list(data.scenarios())
-cols = st.columns([1.2, 1, 1, 1, 1])
+cols = st.columns([1.2, 1, 1, 1, 1, 1])
 scenario = cols[0].selectbox("Scenario", names, key="scenario",
                              help="; ".join(f"{n}: {s['description']}" for n, s in data.scenarios().items()))
 levers = {}
@@ -37,8 +37,7 @@ for col, (path, spec) in zip(cols[1:], data.LEVERS.items()):
     if path in data.PERCENT_LEVERS:
         v = col.slider(spec["label"], int(spec["min"] * 100), int(spec["max"] * 100), int(round(default * 100)),
                        step=int(round(spec["step"] * 100)), format="%d%%", key=f"{path}|{scenario}",
-                       help="Share of fit Greenfield requests taken on; the rest are turned down up front."
-                       if path == "demand.intake.Greenfield" else None)
+                       help=data.LEVER_HELP.get(path))
         levers[path] = v / 100
     else:
         levers[path] = col.slider(spec["label"], spec["min"], spec["max"], default, step=spec["step"],

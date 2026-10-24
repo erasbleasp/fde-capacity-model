@@ -12,17 +12,16 @@ Monte Carlo layer that shows how certain the plan is at a given level of resourc
 
 ## 1. The story
 
-FDE demand grows faster than the team can hire. Leadership has three levers: **hire**,
-**partners**, and **productize**. I went in expecting productizing to be the lever that
-compounds. **The model showed it hinges on a number nobody has measured yet**, the reuse ceiling
-(how much of an engagement reusable assets can ever cover). Below ~40% coverage, extra harvest
-time costs more delivery hours than it saves. Above it, 12% harvest delivers +9 to +50 more
-engagements over 24 months. So the recommendation isn't "productize harder." It's **hold harvest
-at 7–9%, measure the ceiling for two quarters, and pre-commit to a decision rule.**
+FDE demand is outrunning capacity, and no realistic mix of levers closes the gap if growth holds
+(~6% a month): today's plan serves about 45% of next half's demand, the best blend about 65%. So the
+real decision is **which demand to serve**, and that needs a value per engagement the model doesn't
+have yet. Leadership has four levers: **hire**, **partners**, **match FDEs to work better**, and
+**prioritize**; productizing is a fifth that hinges on a number nobody has measured (the reuse
+ceiling), so it gets a measure-then-decide rule rather than a bet.
 
-The Monte Carlo layer turns single numbers into commitments: "at today's hiring there's a 10%
-chance we cover 90% of demand next half; here's what each lever buys, and here's the P80
-go-live date to put in a customer's SOW."
+The Monte Carlo layer turns single numbers into commitments ("commit at P80"), and the backtest shows
+how far to trust them: on six held-out months the P10–P90 bands caught 62% of outcomes (target 80%).
+The model is honest about being overconfident, and about what it can't tell you.
 
 ## 2. Master metrics
 
@@ -63,10 +62,12 @@ config/
 docs/
   metric_dictionary.md
   productize_sensitivity.md   # does 12% harvest pay? depends on the reuse ceiling
+  backtest.md                 # out-of-sample check and what it changed
   recommendation_memo.md      # 1-page memo (source); recommendation_memo.pdf is built from it
 scripts/
   build_memo_pdf.py           # Markdown -> styled HTML -> PDF (WeasyPrint, or headless Brave/Chrome)
 analysis/
+  backtest.py                 # calibrate on history to 31 Mar 2026, forecast the next 6 months, score vs actuals
   productize_sensitivity.py   # one-at-a-time, combined, paired Monte Carlo, harvest curve
 warehouse/
   schema.sql               # raw tables
@@ -134,12 +135,15 @@ from the calibration level (`reference_delivery_share` = 0.70).
 - **Supply**: exits = HC × (1 − e^(−attrition/12)); reqs opened at the hiring rate land
   time-to-fill later (open reqs land over the first time-to-fill); hires ramp 25/50/75/100%;
   managers hired to hold the 8:1 span
-- **Capacity** = Σ ICs × ramp × 4.33 × target utilization (0.85)
+- **Capacity** = Σ ICs × ramp × 4.33 × planned allocation ("staffing match", 0.82, calibrated from
+  `v_calibration.planned_allocation`; a lever)
   + partner weeks × efficiency (Pattern-based and Expansion only)
 - **Effective duration**: D = D_base × median uncertainty × overhead stretch × (ref_FDEs ÷ FDEs)^α × (1 − R_type),
   where stretch = 0.70 ÷ ((1 − PTO) × (1 − presales − internal − harvest))
 - **Effort per engagement** = FDEs × (mean build weeks + ½ × blocker delay × P(blocker) + ½ × handoff) × (1 − 0.4 × cancel rate)
-- **Demand** = requests × (1 + growth)^t × fit rate, split by type; Greenfield share = base − 0.8 × (reuse gain)
+- **Demand level** = the trend-fit value at the as-of month (16 a month; the trailing 6-month average of 13 lags a
+  growing series), with a range from the fit's standard error
+- **Demand** = requests × (1 + growth)^t × fit rate, split by type; Greenfield share = base − 0.5 × (reuse gain)
   (capacity declines are an *output* of the gap, not an input)
 - **Prioritization lever** (`demand.intake`): share of fit requests of each type taken on; the rest are
   turned down up front ("declined by policy", counted apart from capacity declines). Greenfield
@@ -148,13 +152,13 @@ from the calibration level (`reference_delivery_share` = 0.70).
   Coverage is measured against the demand taken on; "fit demand served" reports the share of all fit
   demand actually started.
 - **Allocation**: partners take eligible work first, FDEs the rest; unserved demand waits, and
-  50% of it walks away each month (capacity declines). Wait = backlog ÷ starts (Little's Law)
+  75% of it walks away each month (capacity declines; raised from 50% after the backtest). Wait = backlog ÷ starts
 - **Coverage** = capacity ÷ demand for engagements arriving this month (a monthly flow — exact
   in steady state, lags reality by about one engagement length when things change fast)
 - **Asset library**: L_t = L_{t-1}(1 − decay) + completions_t × yield × (harvest share ÷ 5%);
   completions follow FDE-led starts with a first-order lag of one engagement length
-- **Reuse**: R = R_max × (1 − e^(−L / k)), k = 60 (calibrated so month 0 reproduces the measured 9%);
-  Greenfield gets R × 0.4. Model reuse ratio is reported on engagements *starting* that month
+- **Reuse**: R = R_max × (1 − e^(−L / k)), R_max = 0.30, k = 58 (re-fitted so month 0 reproduces the measured 9%);
+  Greenfield gets R × 0.5. Model reuse ratio is reported on engagements *starting* that month
   (the measured metric is at close, so it lags by about one engagement)
 - **Day-90 rate** = (1 − cancel) × [(1 − P(blocker)) × P(D ≤ 90) + P(blocker) × E_B P(D ≤ 90 − B)],
   with D lognormal(median, σ_type) and B integrated over 5 quantiles of the blocker distribution
@@ -192,6 +196,17 @@ duration = base × (ref ÷ FDEs)^α × (1 − R) × lognormal noise + Bernoulli(
 
 One correlation is modeled: demand growth ↔ greenfield share. Everything else is treated as
 independent and called out as a simplification.
+
+### Validation and review response (v2, 24 Oct 2026)
+
+- **Judgment inputs set independently of the generator** (they had been copied from it): staffing
+  exponent 0.6, reuse ceiling 0.30, Greenfield reuse 0.5, Greenfield shift 0.5, partner efficiency 0.7.
+- **Backtest** (`analysis/backtest.py`, `docs/backtest.md`, dashboard Data & definitions → Backtest):
+  calibrate on history to 31 Mar 2026, forecast Apr–Sep 2026, score against actuals. 62% of months in
+  the P10–P90 band (target 80%); misses lean cautious (no seasonality, small-sample delivery rates).
+- **Demand level from the trend fit** with a range from its standard error; **abandon rate 0.75**.
+- **Staffing match** (planned allocation) calibrated from the data (82%) and made a lever, with a
+  **Better matching** scenario at 90%.
 
 ## 7. Dashboard (Phases 3–4)
 
@@ -265,51 +280,55 @@ recent cohort average (within cohort noise).
 
 Live: https://jwells-fde-capacity-model.streamlit.app/ — **open it 5 minutes early** (it sleeps when
 idle). Start on **Base**, all sliders at their defaults. Hand over the 1-page memo
-(`docs/recommendation_memo.pdf`) at the end. Numbers below are from the current made-up data.
+(`docs/recommendation_memo.pdf`) at the end. Numbers below are from the current (v2) made-up data.
 
 1. **Scorecard — the problem (1.5 min).** Define the two master metrics in one breath: Day-90 clock
    starts at kickoff and cancelled engagements stay in the denominator; reuse is effort-weighted.
-   Then the tiles: coverage **61%**, a **9% chance** of 90% next half. "Demand is outrunning
-   capacity": requests grow ~6%/month. Waterfall: 213 headcount weeks → 168 FDE weeks after ramp
-   and the 15% buffer → 184 with partners, against 313 of demand.
+   Tiles: coverage **~45%** next half, about a **1% chance** of 90%. "If demand keeps growing ~6% a
+   month" — say the condition out loud. Waterfall: 213 headcount weeks → 162 FDE weeks after ramp and
+   the unassigned buffer → 176 with partners, against 400 of demand.
 2. **Supply — where the people are (1 min).** Headcount 40 → ~79 by Sep 2028 at today's hiring.
-   **FDE coverage by region: APAC ~40% vs ~58% in AMER and EMEA** — where the next reqs go. "Where
-   FDE time goes": harvest stepped from 3% to 7% in Jan 2026.
-3. **Outcomes — what engagements produce (1 min).** Day-90: ~69% on actual cohorts, ~67% forecast.
-   Flywheel as three small charts (no dual axes): library 38 → ~180, reuse 9% → ~20%, engagements
-   getting shorter. Customer spend runs **5.1×** pre-kickoff by month 6 after go-live.
+   Regional coverage: APAC's FDE-to-demand ratio is lowest (~29% vs ~43%) — "a question to check
+   (does APAC demand need local staff?), not a finding: the model pools regions."
+3. **Outcomes — what engagements produce (1 min).** Day-90: ~69% on actual cohorts, ~66% forecast.
+   Flywheel as three small charts: library 38 → ~174, reuse 9% → ~19%. Spend runs **5.1×**
+   pre-kickoff by month 6 after go-live.
 4. **Confidence — how sure are we (2 min).** Target 90%, commit level P80.
-   - Confidence vs hiring: 2.3 hires/month → **8%**, 6 → **41%**, 8 → **61%**. "Hiring can't fix next
-     half on its own; time to fill plus ramp is ~5 months." Partner capacity tops out near 20%.
-   - FDEs short: **38 at P50, 57 at P80** — "the gap between those lines is the price of certainty."
-   - Engagement planner, Greenfield, kickoff 2 Nov: 2 FDEs → P80 **136 days (17 Mar 2027)**; a third
-     FDE → 106 days and day-90 odds **37% → 62%**. "Put the P80 date in the SOW."
-   - Tornado: demand growth leads. "The forecast is worth validating before the hiring plan."
-5. **Scenarios — the options (2 min).** Prioritize: taking 80% of Greenfield starts **300
-   engagements vs 285 for the same cost** (Greenfield is ~3× the effort; partners can't take it).
-   Show it live: drag **Greenfield intake** to 80% and watch coverage move. Blended: **88% median
-   coverage, 65% chance of ≥80%, 373 engagements, +$13m**, and a lower cost per engagement
-   ($160k vs $163k).
-6. **Productize — the model challenged my hypothesis (1 min).** I expected productizing to compound.
-   At 12% harvest it roughly breaks even (wins 16% of paired trials); the unmeasured reuse ceiling
-   swings it from −14 to +41 engagements (`docs/productize_sensitivity.md`). So: hold harvest at
-   7–9%, measure the ceiling for two quarters, and agree the decision rule now (≥ 40% → go to 12%).
-7. **Data & definitions — every number traces back (30 s).** Filter to "Judgment or lever" to show
-   what isn't calibrated; open the `v_calibration` SQL beside its rows; download the Excel model.
-8. **Close (30 s).** The memo's five recommendations: Blended plan, commit at P80 (72% coverage),
-   APAC reqs, measure-then-decide on productization, validate the demand forecast first.
+   - Confidence vs hiring: even **8 hires a month gives ~19%**; partner capacity barely moves it.
+     Then drop the target to 60% to show what *is* within reach.
+   - FDEs short: **~68 at P50, ~96 at P80** — "the gap between those is the price of certainty."
+   - Engagement planner, Greenfield, kickoff 2 Nov: 2 FDEs → P80 **134 days (16 Mar 2027)**; a third
+     FDE → 108 days and day-90 odds **38% → 60%**. "Put the P80 date in the SOW."
+   - Tornado: demand growth and demand level lead. "Validate the forecast before the hiring plan."
+5. **Scenarios — the options (2 min).** **Better matching** (assign 90% of delivery time, not 82%):
+   +23 engagements for about the same spend — about a fifth of FDE time sits unassigned while ~30% of
+   fit requests are declined. **Prioritize**: 283 vs 268 engagements, but fit demand served only
+   38% → 40%, and the model counts every engagement as equal — "whether to turn Greenfield down
+   depends on its value, which is the next thing to model." **Blended**: ~65% coverage, 22% chance of
+   ≥80%, 361 engagements, +$13m. Drag **Staffing match** and **Greenfield intake** live.
+6. **Productize — the model challenged my hypothesis (1 min).** At 12% harvest it starts ~8 fewer
+   engagements (wins 3% of paired trials); the unmeasured reuse ceiling swings it from −14 to +9. Hold
+   harvest at 5–7%, measure the ceiling, decision rule: ≥ 40% → go to 12%.
+7. **Data & definitions — how far to trust it (1 min).** **Backtest tab**: calibrated on 12 months,
+   forecast the next 6 — the P10–P90 bands caught **62%** of outcomes against a target of 80%; the
+   misses lean cautious, and the backtest already changed two inputs (demand level from the trend,
+   abandon rate). Then filter assumptions to "Judgment or lever", show `v_calibration` beside its SQL,
+   download the Excel model.
+8. **Close (30 s).** The memo: Blended committed at P80 (51%), fix matching before adding heads, value
+   engagements by type before tightening intake, measure-then-decide on productization, validate demand.
 
 **Likely questions**
-- *Why made-up data?* No access to real data; the generator's settings are documented and the SQL
-  calibration recovers them (tests check it), so the method is what's on show.
-- *Coverage above 100% at P90?* Some trials have less demand than capacity; the band is honest about it.
-- *Why does the Day-90 forecast start below recent cohorts?* Cohorts of 6–19 engagements swing
-  50–83%; the forecast is the expected rate for the planned mix, inside that noise.
-- *Biggest simplification?* Capacity vs demand is a monthly flow (exact in steady state, lags about
-  one engagement when things change fast); unserved demand abandons at a judged 50%/month.
-- *First thing you'd do with real data?* Fit demand growth properly, measure the reuse ceiling, and
-  get partner efficiency from real partner-led engagements — the three inputs the tornado and the
-  sensitivity analysis say matter most.
+- *Isn't the validation circular?* Recovering the generator's settings only proves the pipeline; the
+  backtest tests the structure on held-out months (62% in band vs 80% target), and the judgment inputs
+  are set from priors, not copied from the generator. The real test is the same backtest on real data.
+- *Doesn't turning work down inflate coverage?* Yes, by definition — that's why fit demand served sits
+  beside it, and why I'd value engagements by type before tightening intake.
+- *Why is the headline so dire?* It's conditional on ~6% monthly growth; at 3% Blended covers ~83%.
+- *What's missing?* Ramp that slows with fast hiring, partner ramp-up and minimum commitments,
+  recruiting cost, effort spread over the engagement (charging it at start overstates load ~5–10% when
+  demand grows), and revenue/margin.
+- *First thing with real data?* Fit demand level and growth, measure the reuse ceiling, and diagnose
+  unassigned time (skills, region or timing).
 
 ## 10. How to run
 

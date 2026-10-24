@@ -83,8 +83,9 @@ with left:
                      showgrid=True, gridcolor=ui.GRID)
     ui.chart(fig, "What each scenario buys", "Engagements started over 24 months vs 24-month cost; P50",
              df[["scenario", "cost_24m_p50", "starts_24m_p50", "fit_served", "hc_end_p50"]].round(2),
-             "Up and to the left is better. Turning some Greenfield down delivers more engagements for the same "
-             "cost: Greenfield is ~3× the effort of pattern-based work and partners can't take it.")
+             "Up and to the left is better. Turning some Greenfield down starts more engagements for the same "
+             "cost (it is ~3× the effort and partners can't take it), but the model counts every engagement as "
+             "equal, so it can't say whether declining Greenfield is wise. Costs are illustrative.")
 
 with right:
     st.markdown('<div class="ec-head"><div class="ec-rule"></div><div class="ec-title">Scenario scorecard</div>'

@@ -22,13 +22,17 @@ horizon:
 # ------------------------------------------------------------------ demand
 demand:
   requests_per_month:
-    value: 13
+    value: 16
     dist: triangular
-    low: 10
-    mode: 13
-    high: 16
-    calibrated_from: requests_per_month
-    note: Average of the last 6 full months; range covers the month-to-month noise seen in v_demand_summary.
+    low: 11.5
+    mode: 16
+    high: 22
+    calibrated_from: requests_per_month_trend
+    note: >
+      Demand level at the as-of month from the log-linear trend fit (v_calibration.requests_per_month_trend),
+      not the trailing 6-month average (13), which lags a growing series by ~3 months. Range from the fit's
+      standard error (P10-P90 about 11.6-22.1): the backtest showed a level estimated from 12-18 noisy
+      months can be off by 20-25%. (v2, 2026-10-24)
   monthly_growth:
     value: 0.06
     dist: triangular
@@ -60,16 +64,28 @@ demand:
     high: 0.62
     note: Share of new requests that are Greenfield at the start of the horizon (falls as reuse rises).
   greenfield_shift_per_reuse:
-    value: 0.8
-    note: Each +1pt of reuse moves 0.8pt of demand from Greenfield to Pattern-based / Expansion. Judgment.
+    value: 0.5
+    dist: triangular
+    low: 0.0
+    mode: 0.5
+    high: 1.0
+    note: >
+      Each +1pt of reuse moves this many points of new demand from Greenfield to Pattern-based /
+      Expansion (customers ask for what already exists). Judgment, not observable yet. Set from priors, independently of the data generator's settings (v2, 2026-10-24).
   greenfield_growth_correlation:
     value: 0.5
     note: Monte Carlo draws demand growth and greenfield share with this rank correlation (new demand skews to new use cases).
   backlog_abandon_rate:
-    value: 0.5
+    value: 0.75
+    dist: triangular
+    low: 0.5
+    mode: 0.75
+    high: 0.95
     note: >
       Share of unserved demand that walks away each month (becomes a capacity decline); the rest
-      waits in the backlog. Judgment; the history shows ~30% capacity declines at ~18-day waits.
+      waits in the backlog. Judgment, raised from 0.5 after the backtest under-predicted capacity
+      declines (in the history, requests are declined at the decision rather than waiting). Because the
+      backtest informed it, this input is no longer an out-of-sample test. (v2, 2026-10-24)
   intake:
     note: >
       PRIORITIZATION LEVER. Share of fit requests of each type the team chooses to take on; the rest
@@ -172,10 +188,18 @@ overhead:
       instead of delivery hours. 0 = every extra harvest hour displaces a delivery hour (engagements
       stretch). Judgment; the history has ~16% of deployable time unassigned, so some slack exists.
   target_utilization:
-    value: 0.85
+    value: 0.82
+    dist: triangular
+    low: 0.76
+    mode: 0.82
+    high: 0.88
+    calibrated_from: planned_allocation
     note: >
-      Share of a ramped IC's time the model will plan to staff on engagements (allocation); the rest
-      absorbs fragmentation and region mismatch (bench ~16% of deployable hours in v_overhead_mix).
+      STAFFING-MATCH LEVER. Share of a ramped FDE's delivery time actually assigned to engagements;
+      the rest is unassigned because of skills, region or timing mismatch. Measured: 81% over the last
+      6 months, 87% over the last 3 (v_calibration.planned_allocation) — while ~30% of fit requests
+      were declined for capacity, so this is a matching problem, not spare capacity. Raising it
+      (cross-region staffing, skills pools, better scheduling) adds capacity without hiring.
   reference_delivery_share:
     value: 0.70
     note: >
@@ -222,12 +246,14 @@ cycle_time:
   fdes_per_engagement: {Greenfield: 2.0, Pattern-based: 1.3, Expansion: 1.0}   # v_calibration fdes_per_*
   ref_fdes: {Greenfield: 2.0, Pattern-based: 1.5, Expansion: 1.0}
   staffing_alpha:
-    value: 0.7
+    value: 0.6
     dist: triangular
-    low: 0.5
-    mode: 0.7
-    high: 0.85
-    note: Duration scales with (ref / FDEs)^alpha. Not identifiable from 100 engagements; judgment (coordination cost).
+    low: 0.4
+    mode: 0.6
+    high: 0.8
+    note: >
+      Duration scales with (ref / FDEs)^alpha: at 0.6, doubling a team cuts duration by about a third
+      (coordination costs keep it well short of half). Not identifiable from ~100 engagements; judgment. Set from priors, independently of the data generator's settings (v2, 2026-10-24).
   blocker_prob:
     value: 0.26
     dist: beta
@@ -258,12 +284,14 @@ partners:
     value: 20
     note: LEVER. Contracted partner capacity in FDE-equivalent weeks (recent usage ~18/mo).
   efficiency:
-    value: 0.77
+    value: 0.70
     dist: triangular
-    low: 0.60
-    mode: 0.77
+    low: 0.50
+    mode: 0.70
     high: 0.90
-    note: Partners take ~1.3x as long on the same scope. Only ~5 completed partner-led engagements, so wide.
+    note: >
+      Partner output per week relative to an FDE on the same scope. Fewer than 10 completed partner-led
+      engagements, too few to fit, so a wide judgment range. Set from priors, independently of the data generator's settings (v2, 2026-10-24).
   eligible_types: [Pattern-based, Expansion]
 
 # ------------------------------------------------------------------ flywheel
@@ -288,25 +316,31 @@ assets:
     high: 0.06
     calibrated_from: asset_monthly_decay
   reuse_max:
-    value: 0.35
+    value: 0.30
     dist: triangular
-    low: 0.25
-    mode: 0.35
-    high: 0.45
-    note: Ceiling on effort covered by assets. Not observable yet (library is small); judgment.
+    low: 0.15
+    mode: 0.30
+    high: 0.50
+    note: >
+      Ceiling on the share of pattern-based effort assets can ever cover. Not observable yet (library is
+      small), so the range is deliberately wide. The Productize decision hinges on it. Set from priors, independently of the data generator's settings (v2, 2026-10-24).
   reuse_half_k:
-    value: 60
+    value: 58
     dist: triangular
     low: 40
-    mode: 60
-    high: 90
+    mode: 58
+    high: 85
     note: >
-      Library size at which reuse reaches ~63% of its ceiling. Calibrated through the model:
-      k = 60 reproduces the measured 9% reuse ratio at the start of the horizon (k = 40 gives 12%).
-      tests/test_model.py checks this.
+      Library size at which reuse reaches ~63% of its ceiling. Calibrated through the model: with the
+      v2 judgment priors (ceiling 0.30, greenfield factor 0.5), k = 58 reproduces the measured 9% reuse
+      ratio at the start of the horizon. tests/test_model.py checks this.
   greenfield_reuse_factor:
-    value: 0.4
-    note: Greenfield builds reuse 40% as much as pattern-based ones.
+    value: 0.5
+    dist: triangular
+    low: 0.25
+    mode: 0.5
+    high: 0.75
+    note: Greenfield builds reuse this fraction as much as pattern-based ones. Judgment. Set from priors, independently of the data generator's settings (v2, 2026-10-24).
   current_reuse_ratio:
     value: 0.09
     calibrated_from: reuse_ratio

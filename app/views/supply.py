@@ -134,7 +134,8 @@ with right:
     ui.chart(fig, "FDE coverage by region", f"FDE capacity ÷ the region's demand, {window_label} average, %; "
                                             "whiskers P10–P90",
              pd.DataFrame({"Region": REGIONS, "P10": q[0], "P50": q[1], "P90": q[2]}).round(3),
-             "Partners excluded. A region well below the others is where to open the next reqs.")
+             "Partners excluded. The model pools capacity across regions, so a low ratio is a question to check "
+             "(must that region's demand be served locally?), not a finding about where reqs should go.")
 
 # ---------------------------------------------------------------- where FDE time goes (actual)
 mix = data.query("SELECT month, category, share_of_all FROM v_overhead_mix ORDER BY month")

@@ -30,7 +30,7 @@ CSS = """
 @import url("https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,400;0,600;0,700;1,400&family=Source+Serif+4:opsz,wght@8..60,700&display=block");
 @page { size: Letter; margin: 0.5in 0.6in 0.45in 0.6in; }
 * { box-sizing: border-box; }
-body { font-family: "Fira Sans", system-ui, sans-serif; font-size: 9.9pt; line-height: 1.4; color: #0C0C0C; margin: 0; }
+body { font-family: "Fira Sans", system-ui, sans-serif; font-size: 9.6pt; line-height: 1.37; color: #0C0C0C; margin: 0; }
 .rule { position: relative; border-top: 1px solid #E3120B; height: 9px; }
 .rule::before { content: ""; position: absolute; left: 0; top: -1px; width: 34px; height: 8px; background: #E3120B; }
 h1 { font-family: "Source Serif 4", Georgia, serif; font-size: 20pt; line-height: 1.1; margin: 2px 0 4px; }

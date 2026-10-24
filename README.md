@@ -19,9 +19,9 @@ been idle it takes a moment to wake up)
 | `warehouse/` | Simulates 18 months of FDE operations into DuckDB (11 tables) and SQL views, including `v_calibration`, which turns the history into model inputs |
 | `config/assumptions.yaml` | Forward-model inputs: each has a value, a distribution, the SQL view it was calibrated from, and a note on why its range is that wide |
 | `model/` | Vectorized engine (24 monthly steps), Monte Carlo (2,000 trials in ~0.1 s), confidence curves, tornado, scenarios, single-engagement go-live simulator |
-| `analysis/` | Sensitivity analysis showing the Productize result hinges on the unmeasured reuse ceiling |
+| `analysis/` | Backtest (calibrate on 12 months, forecast the next 6, score against actuals) and the Productize sensitivity analysis |
 | `app/` | Streamlit dashboard: Scorecard, Supply, Outcomes, Confidence, Scenarios, Data & definitions (with Excel export); a scenario + four levers scope every page |
-| `tests/` | 66 tests: data integrity, metric definitions, calibration recovery, model mechanics, the prioritization lever, dashboard smoke tests, Excel export |
+| `tests/` | 68 tests: data integrity, metric definitions, calibration recovery, model mechanics, the prioritization lever, dashboard smoke tests, Excel export |
 
 Master metrics: **Day-90 Productization Rate** and **Reusable-Asset Ratio** (definitions in
 [docs/metric_dictionary.md](docs/metric_dictionary.md)). Build plan, model equations and the demo
@@ -33,7 +33,7 @@ script are in [PLAN.md](PLAN.md); the running decision log is in [Project Memory
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/streamlit run app/streamlit_app.py      # dashboard at http://localhost:8501
 .venv/bin/python -m model.run                     # plain-text model report
-.venv/bin/python -m pytest tests -q               # 66 tests
+.venv/bin/python -m pytest tests -q               # 68 tests
 ```
 
 The dashboard builds the warehouse (`fde.duckdb`) on first launch if it isn't there.

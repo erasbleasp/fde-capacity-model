@@ -23,9 +23,9 @@ REFIT_K = {"assets.reuse_max", "assets.greenfield_reuse_factor"}
 
 # judgment settings: current value first, then the range tested
 SETTINGS = {
-    "assets.reuse_max": [0.35, 0.20, 0.25, 0.45, 0.60],
-    "assets.greenfield_reuse_factor": [0.4, 0.2, 0.6, 0.8, 1.0],
-    "demand.greenfield_shift_per_reuse": [0.8, 0.0, 0.4, 1.2, 2.0],
+    "assets.reuse_max": [0.30, 0.15, 0.20, 0.40, 0.50],
+    "assets.greenfield_reuse_factor": [0.5, 0.25, 0.75, 1.0],
+    "demand.greenfield_shift_per_reuse": [0.5, 0.0, 1.0, 1.5],
     "assets.yield_at_5pct_harvest": [0.8, 0.5, 1.1, 1.4],
     "assets.monthly_decay": [0.04, 0.02, 0.06, 0.08],
     "overhead.harvest_from_slack": [0.0, 0.25, 0.5, 0.75, 1.0],
@@ -137,8 +137,8 @@ def main():
     grid = pd.DataFrame(rows).pivot(index=top[0], columns=top[1], values="d_starts_24m")
     print(grid.round(1).to_string())
 
-    favorable = {"assets.reuse_max": 0.45, "assets.greenfield_reuse_factor": 0.6,
-                 "demand.greenfield_shift_per_reuse": 1.2, "assets.monthly_decay": 0.06,
+    favorable = {"assets.reuse_max": 0.40, "assets.greenfield_reuse_factor": 0.75,
+                 "demand.greenfield_shift_per_reuse": 1.0, "assets.monthly_decay": 0.06,
                  "overhead.harvest_from_slack": 0.5}
     print("\n== Plausibly favorable combination (each setting one step toward Productize) ==")
     print(favorable)

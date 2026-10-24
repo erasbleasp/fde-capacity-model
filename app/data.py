@@ -32,8 +32,14 @@ LEVERS = {
     "overhead.harvest_share": dict(label="Harvest time", min=0.03, max=0.20, step=0.01, fmt="%.2f"),
     "partners.weeks_per_month": dict(label="Partner weeks per month", min=0.0, max=80.0, step=5.0, fmt="%.0f"),
     "demand.intake.Greenfield": dict(label="Greenfield intake", min=0.5, max=1.0, step=0.05, fmt="%.2f"),
+    "overhead.target_utilization": dict(label="Staffing match", min=0.70, max=0.95, step=0.01, fmt="%.2f"),
 }
-PERCENT_LEVERS = {"overhead.harvest_share", "demand.intake.Greenfield"}
+PERCENT_LEVERS = {"overhead.harvest_share", "demand.intake.Greenfield", "overhead.target_utilization"}
+LEVER_HELP = {
+    "demand.intake.Greenfield": "Share of fit Greenfield requests taken on; the rest are turned down up front.",
+    "overhead.target_utilization": "Share of FDE delivery time actually assigned to engagements (measured ~82%); "
+                                   "the rest is lost to skills, region or timing mismatch.",
+}
 
 
 @st.cache_data
@@ -191,3 +197,11 @@ def assumption_rows() -> pd.DataFrame:
     df = pd.DataFrame(rows)
     df["Value"] = df["Value"].astype(str)
     return df
+
+
+@st.cache_data(show_spinner="Running the backtest (calibrate on 12 months, forecast 6)…", max_entries=1)
+def backtest() -> dict:
+    """Out-of-sample check: calibrate on history to 31 Mar 2026, forecast Apr-Sep 2026, score vs actuals."""
+    from analysis.backtest import run_backtest
+    warehouse()                         # make sure fde.duckdb exists
+    return run_backtest(DB)
