@@ -63,6 +63,9 @@ config/
 docs/
   metric_dictionary.md
   productize_sensitivity.md   # does 12% harvest pay? depends on the reuse ceiling
+  recommendation_memo.md      # 1-page memo (source); recommendation_memo.pdf is built from it
+scripts/
+  build_memo_pdf.py           # Markdown -> styled HTML -> PDF (WeasyPrint, or headless Brave/Chrome)
 analysis/
   productize_sensitivity.py   # one-at-a-time, combined, paired Monte Carlo, harvest curve
 warehouse/
@@ -256,48 +259,57 @@ recent cohort average (within cohort noise).
 | 2b | Monte Carlo runner, engagement simulator, percentile summaries | **done** |
 | 3 | Dashboard pages 1–3 | **done** |
 | 4 | Confidence page, scenarios (+ Prioritize, Blended, intake lever), tornado, Excel export, definitions page | **done** |
-| 5 | 1-page memo, demo script on the live pages, optional Ask Claude panel (deploy already done) | next |
+| 5 | 1-page memo (Markdown + PDF), demo script on the live pages, optional Ask Claude panel (deploy already done) | memo + script **done**; Ask Claude open |
 
-## 9. Demo script (~9 minutes)
+## 9. Demo script (~10 minutes, on the live dashboard)
 
-Numbers below are from the current made-up data (`python -m model.run`,
-`python -m analysis.productize_sensitivity`); regenerate them if inputs change.
+Live: https://jwells-fde-capacity-model.streamlit.app/ — **open it 5 minutes early** (it sleeps when
+idle). Start on **Base**, all sliders at their defaults. Hand over the 1-page memo
+(`docs/recommendation_memo.pdf`) at the end. Numbers below are from the current made-up data.
 
-1. **Definitions first (1 min)** — what counts as productionized; why cancelled engagements stay
-   in the denominator; why reuse is effort-weighted. Point to the metric dictionary: every number
-   traces to a SQL view or is labeled as judgment.
-2. **Base case + confidence (1.5 min)** — requests grow ~6%/month (13 → ~50/month over 24 months)
-   while hiring at 2.3/month takes headcount from 41 to ~77. Coverage starts at ~62% and falls to
-   ~40%. "That's the median. The chance of covering 90% of demand in months 7–12 is about 10%."
-   Tornado: the top three drivers are all demand (growth, current volume, greenfield share), so
-   the forecast is what to validate first.
-3. **Hire-heavy (1 min)** — confidence-vs-resources curve: 2 hires/month → 7%, 4 → 22%, 6 → 41%.
-   Time to fill plus ramp is ~5 months, so hiring can't fix the next two quarters. Doubling
-   hiring (4.6/month) lifts coverage to ~76% but adds ~$16M over 24 months.
-4. **Partner-leverage (1 min)** — 45 partner weeks/month adds ~32 engagements and lifts coverage
-   to ~66% for ~$5M. It only helps on pattern-based and expansion work, which caps it.
-5. **Productize — the model challenged my hypothesis (2.5 min)**
-   - At 12% harvest with current settings, Productize roughly breaks even: reuse is +3 pts, but the
-     extra overhead stretches every engagement ~7% and the Base library saturates anyway
-     (P(Productize wins) = 16%).
-   - Sensitivity: one judgment call drives it. The reuse ceiling swings the result from −14 to +41
-     engagements; nothing else comes close. Greenfield reuse and whether harvest comes out of bench
-     time are next.
-   - With each setting one plausible step more favorable: +50 engagements (+15%), breakeven in
-     month 5, Day-90 +5 pts, cost per engagement −13%, P(win) = 100%.
-   - "So the data can't yet tell a losing bet from a winning one — and that's measurable."
-6. **Engagement planner (1 min)** — Greenfield with 2 FDEs: P50 ~99 days, P80 ~136, 37% live by
-   day 90. A third FDE moves P80 to ~106 days and day-90 odds to 62% for ~16% more staffing
-   weeks. "Put the P80 date in the SOW, and staff the third FDE where the deadline matters."
-7. **Recommendation (1 min)**
-   - **Capacity:** no lever reaches 90% coverage next half; even 4.6 hires/month plus 45 partner
-     weeks gets ~35% odds (~80% median coverage, ~$68M over 24 months). Leadership has to choose a
-     commit level and a prioritization bar, not just a hiring number.
-   - **Productize:** hold harvest at 7–9% (optimal under current settings, so it costs nothing).
-   - **Measure** for 2 quarters: hours saved per pattern-based engagement once the library has 60+
-     assets, greenfield reuse, and whether harvest hours come from bench or delivery.
-   - **Decision rule, agreed now:** if pattern-based coverage is ≥ ~40% (or greenfield builds reuse
-     ≥ 60% as much as pattern-based ones), move harvest to 12%.
+1. **Scorecard — the problem (1.5 min).** Define the two master metrics in one breath: Day-90 clock
+   starts at kickoff and cancelled engagements stay in the denominator; reuse is effort-weighted.
+   Then the tiles: coverage **61%**, a **9% chance** of 90% next half. "Demand is outrunning
+   capacity": requests grow ~6%/month. Waterfall: 213 headcount weeks → 168 FDE weeks after ramp
+   and the 15% buffer → 184 with partners, against 313 of demand.
+2. **Supply — where the people are (1 min).** Headcount 40 → ~79 by Sep 2028 at today's hiring.
+   **FDE coverage by region: APAC ~40% vs ~58% in AMER and EMEA** — where the next reqs go. "Where
+   FDE time goes": harvest stepped from 3% to 7% in Jan 2026.
+3. **Outcomes — what engagements produce (1 min).** Day-90: ~69% on actual cohorts, ~67% forecast.
+   Flywheel as three small charts (no dual axes): library 38 → ~180, reuse 9% → ~20%, engagements
+   getting shorter. Customer spend runs **5.1×** pre-kickoff by month 6 after go-live.
+4. **Confidence — how sure are we (2 min).** Target 90%, commit level P80.
+   - Confidence vs hiring: 2.3 hires/month → **8%**, 6 → **41%**, 8 → **61%**. "Hiring can't fix next
+     half on its own; time to fill plus ramp is ~5 months." Partner capacity tops out near 20%.
+   - FDEs short: **38 at P50, 57 at P80** — "the gap between those lines is the price of certainty."
+   - Engagement planner, Greenfield, kickoff 2 Nov: 2 FDEs → P80 **136 days (17 Mar 2027)**; a third
+     FDE → 106 days and day-90 odds **37% → 62%**. "Put the P80 date in the SOW."
+   - Tornado: demand growth leads. "The forecast is worth validating before the hiring plan."
+5. **Scenarios — the options (2 min).** Prioritize: taking 80% of Greenfield starts **300
+   engagements vs 285 for the same cost** (Greenfield is ~3× the effort; partners can't take it).
+   Show it live: drag **Greenfield intake** to 80% and watch coverage move. Blended: **88% median
+   coverage, 65% chance of ≥80%, 373 engagements, +$13m**, and a lower cost per engagement
+   ($160k vs $163k).
+6. **Productize — the model challenged my hypothesis (1 min).** I expected productizing to compound.
+   At 12% harvest it roughly breaks even (wins 16% of paired trials); the unmeasured reuse ceiling
+   swings it from −14 to +41 engagements (`docs/productize_sensitivity.md`). So: hold harvest at
+   7–9%, measure the ceiling for two quarters, and agree the decision rule now (≥ 40% → go to 12%).
+7. **Data & definitions — every number traces back (30 s).** Filter to "Judgment or lever" to show
+   what isn't calibrated; open the `v_calibration` SQL beside its rows; download the Excel model.
+8. **Close (30 s).** The memo's five recommendations: Blended plan, commit at P80 (72% coverage),
+   APAC reqs, measure-then-decide on productization, validate the demand forecast first.
+
+**Likely questions**
+- *Why made-up data?* No access to real data; the generator's settings are documented and the SQL
+  calibration recovers them (tests check it), so the method is what's on show.
+- *Coverage above 100% at P90?* Some trials have less demand than capacity; the band is honest about it.
+- *Why does the Day-90 forecast start below recent cohorts?* Cohorts of 6–19 engagements swing
+  50–83%; the forecast is the expected rate for the planned mix, inside that noise.
+- *Biggest simplification?* Capacity vs demand is a monthly flow (exact in steady state, lags about
+  one engagement when things change fast); unserved demand abandons at a judged 50%/month.
+- *First thing you'd do with real data?* Fit demand growth properly, measure the reuse ceiling, and
+  get partner efficiency from real partner-led engagements — the three inputs the tornado and the
+  sensitivity analysis say matter most.
 
 ## 10. How to run
 

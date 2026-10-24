@@ -4,6 +4,8 @@ A demand, capacity and staffing model for a Forward Deployed Engineering team, w
 layer that shows how certain the plan is at a given level of resourcing, and a Streamlit dashboard
 to explore it.
 
+**Recommendation memo:** [docs/recommendation_memo.md](docs/recommendation_memo.md) ([PDF](docs/recommendation_memo.pdf))
+
 **Live dashboard:** https://jwells-fde-capacity-model.streamlit.app/ (Streamlit Community Cloud; if it has
 been idle it takes a moment to wake up)
 

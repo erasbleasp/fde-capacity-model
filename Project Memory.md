@@ -9,14 +9,16 @@ working session. The full build spec lives in [PLAN.md](PLAN.md); metric definit
 filling a resume gap: "can build a capacity or staffing model from scratch, explain every
 assumption in it, and pull the data yourself with SQL."
 
-**Status (as of 2026-10-23, end of Session 3):** Phases 1–3 of 5 complete (warehouse, model engine,
-Monte Carlo, dashboard pages 1–3 in an Economist-style design). **Live at
-[jwells-fde-capacity-model.streamlit.app](https://jwells-fde-capacity-model.streamlit.app/)**; repo is
-public at [github.com/erasbleasp/fde-capacity-model](https://github.com/erasbleasp/fde-capacity-model).
+**Status (as of 2026-10-24, end of Session 4):** Phases 1–4 complete and Phase 5's core done: six-page
+dashboard **live at [jwells-fde-capacity-model.streamlit.app](https://jwells-fde-capacity-model.streamlit.app/)**,
+1-page recommendation memo ([Markdown](docs/recommendation_memo.md) · [PDF](docs/recommendation_memo.pdf)),
+demo script on the live pages (PLAN.md §9). Repo public at
+[github.com/erasbleasp/fde-capacity-model](https://github.com/erasbleasp/fde-capacity-model).
 
-**Next session starts with:** Phase 4 — the Confidence page (confidence-vs-resources curve, engagement
-planner, tornado), then Scenarios (with a Blended scenario and a prioritization lever) and Data &
-Definitions. See the checklist under What's next.
+**Next session starts with:** whatever is left of Phase 5 — rehearse the demo (a dry run with Claude
+playing interviewer is an option), link the dashboard and memo from the application / personal site,
+and decide on the optional Ask Claude panel (needs your own API key as a Streamlit secret plus a
+spending cap). See What's next.
 
 ---
 
@@ -64,6 +66,16 @@ Definitions. See the checklist under What's next.
 | 38 | **Host on Streamlit Community Cloud**, linked or embedded from a personal site — not Vercel | Streamlit needs a long-running Python server with websockets; Vercel and static site hosts can't run it. Free, redeploys on push. |
 | 39 | **Repo made public** (supersedes 18) | Simplest deploy path; lets interviewers read the code behind the dashboard. Nothing sensitive in the repo. |
 | 40 | **Dashboard cache: Monte Carlo results as float32, 8 lever settings max (~90 MB)** | One run was ~22 MB; 24 cached settings risked ~500 MB on a free host. |
+| 41 | **Prioritization lever `demand.intake` (Greenfield intake slider, 4th lever in the filter row)**: fit requests turned down up front are "declined by policy", tracked apart from capacity declines | The recommendation needs a prioritization option (posting: "scenarios for hiring and prioritization"). At 80% Greenfield intake the team starts more engagements (300 vs 285) for the same cost. |
+| 42 | **Coverage is measured against demand taken on; "fit demand served" is shown beside it** | Turning demand down raises coverage by definition; the second measure keeps the comparison honest. |
+| 43 | **New scenarios: Prioritize (80% Greenfield intake) and Blended (3.5 hires/mo, 45 partner weeks, 80% Greenfield intake)** | Blended: 88% median coverage, 65% chance of ≥80%, 373 engagements, +$13m over 24 months, lower cost per engagement. |
+| 44 | **Confidence page has its own controls (coverage target, commit level P50/P80/P90)**; confidence curves use 1,000 paired trials per point | Page-scoped questions; same draws at every point so curves move only with the lever. |
+| 45 | **No free-form SQL box on the public app** — the SQL tab shows a fixed list of views | A query box on a public server could read files on it. |
+| 46 | **Excel export (openpyxl)**: README, assumptions, monthly plan, Monte Carlo P10/P50/P90, scenarios, SQL calibration, for the current settings | Decision 10 promised a finance-auditable export. |
+| 47 | **Scenario comparison simulates each scenario once** (`scenario_table(extra=...)`) | First load of Scenarios / Data pages halved (1.24 s → 0.62 s locally); identical output. |
+| 48 | **Streamlit watches `model/`, `warehouse/`, `config/` (folderWatchList) and `watchdog` is installed** | A push left stale `model/` code in memory on Streamlit Cloud (TypeError); a requirements change forced the restart. Fallback: Manage app → Reboot. |
+| 49 | **Memo: Markdown is the source; the PDF is built by `scripts/build_memo_pdf.py` (WeasyPrint, falls back to headless Brave/Chrome)** | One source can't drift. Headless Brave was blocked by the command sandbox, so WeasyPrint was installed (Homebrew); `markdown` is a dev-only dependency. |
+| 50 | **Answer to "reset the 90% target?": commit at P80 instead** — 72% coverage under Blended (49% today) | No plan in the memo has better-than-even odds of 90% next half. |
 
 ## Actions taken
 
@@ -126,6 +138,26 @@ Definitions. See the checklist under What's next.
   [jwells-fde-capacity-model.streamlit.app](https://jwells-fde-capacity-model.streamlit.app/); checked
   all three live pages match local numbers; added the link to README and PLAN.md.
 
+### Session 4 — 2026-10-24
+- Read Project Memory.md; repo clean, 59 tests passing.
+- Added the **prioritization lever** (`demand.intake`, Greenfield intake slider) to the engine,
+  assumptions and filter row, with policy declines, fit requests and fit demand weeks as outputs;
+  added **Prioritize** and **Blended** scenarios; 3 new engine tests.
+- Built **Phase 4** pages: **Confidence** (target + commit-level controls, P(target) boxes,
+  confidence-vs-resources curves for hiring and partners, FDEs short at P50/P80/P90, engagement
+  planner with SOW dates, tornado), **Scenarios** (dot-and-whisker comparisons, cost vs engagements,
+  scorecard), **Data & definitions** (Excel download, assumptions with sources and live SQL values,
+  SQL views with live rows, calibration, metric dictionary). New `app/export.py`.
+- Checked every page in the browser; fixed tornado legend overlap, scenario label collisions,
+  rounded "Now" marker. **66 tests passing.**
+- Committed and pushed Phase 4 (`9123bf0`); verified live. Then halved the scenario comparison's work
+  (`9131f6f`); the live app kept stale model code and errored, fixed with folderWatchList + watchdog
+  (`431486c`) and verified live.
+- Wrote the **1-page recommendation memo** (`docs/recommendation_memo.md` + PDF via
+  `scripts/build_memo_pdf.py`); every number checked against a fresh model run.
+- Rewrote PLAN.md §9 as a ~10-minute **demo script on the live pages**, with likely interview
+  questions; README links the memo.
+
 ### What the data shows (useful in the demo)
 - About 30% of requests that fit were declined in the last 6 months because the team was full, even with about 12% of FDE time unassigned.
 - The reuse ratio went from about 5% to about 9% after harvest time rose from 3% to 7% in January 2026. The library holds about 38 assets.
@@ -140,7 +172,11 @@ Definitions. See the checklist under What's next.
 - Hire-heavy: coverage ~76%, +$16M over 24 months. Partner-leverage: ~66%, +32 engagements, +$5M.
 - Productize: reuse +3 pts, coverage and Day-90 flat; the reuse ceiling decides whether it pays (see decision 28).
 - Greenfield with 2 FDEs: P50 ~99 days, P80 ~136, 37% live by day 90; a third FDE → P80 ~106, 62%, for ~16% more staffing weeks.
-- FDE coverage by region (months 7–12): AMER ~58%, EMEA ~58%, **APAC ~39%** — where the next reqs should go.
+- FDE coverage by region (months 7–12): AMER ~58%, EMEA ~58%, **APAC ~40%** — where the next reqs should go.
+- Prioritize (80% Greenfield intake): 300 engagements vs 285 for the same $46m; coverage of demand taken on 73%.
+- Blended: coverage 88% (P10–P90 63–127%), 65% chance of ≥80%, 373 engagements, $59.7m (+$13m), $160k per engagement vs $163k; commit-at-P80 coverage 72% vs 49% today.
+- Confidence vs hiring (90% target): 2.3/mo → 8%, 6 → 41%, 8 → 61%. FDEs short: 38 at P50, 57 at P80.
+- Base figures shifted slightly after the intake lever was added (it draws its own random numbers): coverage odds 10% → 9%.
 
 ## What's next
 
@@ -151,20 +187,16 @@ Definitions. See the checklist under What's next.
 - [x] Productize sensitivity analysis and reframed demo story
 - [x] **Phase 3: dashboard pages 1–3** (Scorecard, Supply, Outcomes), Economist-style design
 - [x] Deploy to Streamlit Community Cloud (pulled forward from Phase 5)
-- [ ] **Phase 4**
-  - [ ] **Confidence** page: P(target) tiles, confidence-vs-resources curve (hires/month and partner weeks), coverage fan, engagement planner (go-live CDF by staffing, P80 date for the SOW), Monte Carlo tornado
-  - [ ] **Scenarios** page: Base / Hire-heavy / Partner-leverage / Productize side by side on medians *and* spread; add a **Blended** scenario and a **prioritization lever** (which demand to accept) for the recommendation
-  - [ ] **Data & Definitions** page: metric dictionary, key SQL views, assumption → source table
-  - [ ] **Excel export** of assumptions and monthly outputs (for a finance reviewer)
+- [x] **Phase 4**: Confidence, Scenarios (+ Prioritize, Blended, Greenfield intake lever), Data & definitions, Excel export
 - [ ] **Phase 5**
-  - [ ] 1-page memo with the recommendation (capacity commit level + prioritization; hold harvest at 7–9%, measure the reuse ceiling, decision rule)
-  - [ ] Update PLAN.md's demo script to walk the live dashboard pages; rehearse it
-  - [ ] Link the dashboard from a personal site / the application
-  - [ ] Optional: Ask Claude panel explaining scenario differences
+  - [x] 1-page recommendation memo (Markdown + PDF)
+  - [x] Demo script rewritten on the live dashboard pages, with likely questions
+  - [ ] Rehearse the demo (optionally a dry run with Claude playing the interviewer)
+  - [ ] Link the dashboard and memo from the application / personal site
+  - [ ] Optional: Ask Claude panel explaining scenario differences (needs your Anthropic API key as a Streamlit secret + a spending cap)
 
 ### Open questions
 - Whether to add economics (fees, margin) beyond cost per engagement and consumption lift
-- Whether the 90% coverage target should be reset, given no lever mix reaches it next half
 - Dark mode for the dashboard (needs its own validated palette steps)
 
 ## How to resume
@@ -172,9 +204,10 @@ Definitions. See the checklist under What's next.
 ```bash
 cd "/Users/jaeger/Claude/Projects/FDE model demo"
 .venv/bin/python warehouse/build.py      # rebuild fde.duckdb (not committed)
-.venv/bin/python -m pytest tests -q      # expect 59 passed
+.venv/bin/python -m pytest tests -q      # expect 66 passed
 .venv/bin/python -m model.run            # model report (~2 s)
 .venv/bin/streamlit run app/streamlit_app.py   # dashboard at http://localhost:8501
 # live: https://jwells-fde-capacity-model.streamlit.app/ (redeploys on every push to main)
 .venv/bin/python -m analysis.productize_sensitivity   # Productize sensitivity (~16 s)
+.venv/bin/python scripts/build_memo_pdf.py   # rebuild the memo PDF (needs: pip install markdown; brew install weasyprint)
 ```
