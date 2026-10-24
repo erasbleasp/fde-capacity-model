@@ -70,6 +70,18 @@ demand:
     note: >
       Share of unserved demand that walks away each month (becomes a capacity decline); the rest
       waits in the backlog. Judgment; the history shows ~30% capacity declines at ~18-day waits.
+  intake:
+    note: >
+      PRIORITIZATION LEVER. Share of fit requests of each type the team chooses to take on; the rest
+      are declined by policy up front (counted separately from capacity declines). Greenfield is the
+      lever that matters: it is ~3x the effort of pattern-based work and partners can't take it.
+      Coverage is measured against the demand taken on.
+    Greenfield:
+      value: 1.0
+    Pattern-based:
+      value: 1.0
+    Expansion:
+      value: 1.0
 
 # ------------------------------------------------------------------ supply
 supply:

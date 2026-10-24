@@ -100,6 +100,7 @@ def run_model(p: Params, process_noise: bool = False, seed: int | None = None) -
     mix = p.raw("demand.type_mix")
     pattern_of_rest = mix["Pattern-based"] / (mix["Pattern-based"] + mix["Expansion"])
     abandon = p("demand.backlog_abandon_rate")
+    intake = np.stack([p(f"demand.intake.{k}") for k in TYPES], axis=1)       # (n, 3) prioritization lever
     region_mix = np.array([p.raw("demand.region_mix")[r] for r in REGIONS])
 
     # supply
@@ -222,10 +223,13 @@ def run_model(p: Params, process_noise: bool = False, seed: int | None = None) -
         if process_noise:
             requests = rng.poisson(expected_req).astype(float)
             fit_n = rng.binomial(requests.astype(int), fit)
-            new = rng.multinomial(fit_n, shares).astype(float)
+            offered = rng.multinomial(fit_n, shares).astype(float)
+            new = rng.binomial(offered.astype(int), intake).astype(float)
         else:
             requests = expected_req
-            new = col(requests * fit) * shares
+            offered = col(requests * fit) * shares
+            new = offered * intake
+        declined_policy = offered - new        # fit requests turned down by the prioritization lever
         demand_w = (new * effort).sum(axis=1)
 
         # 5. allocation ------------------------------------------------
@@ -268,6 +272,9 @@ def run_model(p: Params, process_noise: bool = False, seed: int | None = None) -
         rec("hires_needed", np.maximum(0, demand_w - eff_cap) / plannable)
         rec("starts", served)
         rec("declined", declined.sum(axis=1))
+        rec("declined_policy", declined_policy.sum(axis=1))
+        rec("fit_requests", offered.sum(axis=1))
+        rec("fit_demand_weeks", (offered * effort).sum(axis=1))   # before the prioritization lever
         rec("backlog", backlog.sum(axis=1))
         rec("wait_months", backlog.sum(axis=1) / np.maximum(served, 1e-12))
         # delivery hours / non-PTO hours: a staffed week yields deploy_frac of an IC's non-PTO hours

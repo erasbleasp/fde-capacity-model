@@ -198,3 +198,24 @@ def test_more_fdes_sooner_but_more_staffing_weeks(tree):
     assert (np.diff(with_assets.staffing_weeks_p50) > 0).all()
     no_assets = df[~df.assets].reset_index(drop=True)
     assert (with_assets.p50_days < no_assets.p50_days).all()
+
+
+# ---------------------------------------------------------------- prioritization lever
+def test_full_intake_declines_nothing_by_policy(base):
+    assert base["declined_policy"][0].sum() == pytest.approx(0)
+    np.testing.assert_allclose(base["fit_demand_weeks"][0], base["demand_weeks"][0])
+
+
+def test_greenfield_intake_turns_down_its_share(tree):
+    r = run_model(point_params(tree, {"demand.intake.Greenfield": 0.8}))
+    gf_offered = r["new_by_type"][0][:, 0] / 0.8          # new = offered x intake
+    np.testing.assert_allclose(r["declined_policy"][0], gf_offered * 0.2)
+    # everything offered is taken on and served, declined (capacity or policy), or still waiting
+    assert r["fit_requests"][0].sum() == pytest.approx(
+        r["starts"][0].sum() + r["declined"][0].sum() + r["declined_policy"][0].sum() + r["backlog"][0][-1])
+    assert (r["demand_weeks"][0] < r["fit_demand_weeks"][0]).all()
+
+
+def test_lower_greenfield_intake_raises_coverage_of_what_is_taken_on(tree, base):
+    r = run_model(point_params(tree, {"demand.intake.Greenfield": 0.8}))
+    assert (r["coverage"][0] > base["coverage"][0]).all()

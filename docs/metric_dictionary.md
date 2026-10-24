@@ -141,7 +141,9 @@ this; Phase 2 can switch to a survival-based fit.
 
 | Metric | Formula |
 |---|---|
-| **Coverage ratio** | (FDE capacity + partner capacity usable on eligible work) ÷ demand arriving this month, in staffing weeks |
+| **Coverage ratio** | (FDE capacity + partner capacity usable on eligible work) ÷ demand *taken on* arriving this month, in staffing weeks |
+| **Declined by policy** | fit requests turned down up front by the prioritization lever (Greenfield intake < 100%); counted apart from capacity declines |
+| **Fit demand served** | engagements started ÷ fit requests before any policy, over 24 months — read next to coverage whenever intake < 100% |
 | **Capacity gap** | capacity − demand (negative = short) |
 | **Backlog** | fit demand not yet started (engagements); 50% walks away each month as capacity declines |
 | **Expected wait** | backlog ÷ starts per month (Little's Law), in months |

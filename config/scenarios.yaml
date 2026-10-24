@@ -20,3 +20,15 @@ Productize:
   description: Raise harvest time to 12% to grow the asset library faster (J-curve).
   overrides:
     overhead.harvest_share: 0.12
+
+Prioritize:
+  description: Take on 80% of fit Greenfield requests; turn the rest down up front.
+  overrides:
+    demand.intake.Greenfield: 0.8
+
+Blended:
+  description: Moderate hiring, more partner capacity, and 80% Greenfield intake.
+  overrides:
+    supply.hires_per_month: 3.5
+    partners.weeks_per_month: 45
+    demand.intake.Greenfield: 0.8

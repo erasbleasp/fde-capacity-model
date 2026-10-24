@@ -85,7 +85,8 @@ app/
   streamlit_app.py         # entry: header, filter row (scenario + 3 levers) scoping every page, navigation
   data.py                  # cached model runs (single-value + 2,000 trials) and warehouse queries
   ui.py                    # palette tokens, Plotly layout, fan charts, stat tiles, table views
-  views/                   # scorecard.py, supply.py, outcomes.py
+  export.py                # Excel workbook: README, assumptions, monthly plan, Monte Carlo, scenarios, calibration
+  views/                   # scorecard, supply, outcomes, confidence, scenarios, definitions
 .streamlit/config.toml     # light theme + fonts (Economist-style palette and typography)
 ```
 
@@ -137,6 +138,12 @@ from the calibration level (`reference_delivery_share` = 0.70).
 - **Effort per engagement** = FDEs × (mean build weeks + ½ × blocker delay × P(blocker) + ½ × handoff) × (1 − 0.4 × cancel rate)
 - **Demand** = requests × (1 + growth)^t × fit rate, split by type; Greenfield share = base − 0.8 × (reuse gain)
   (capacity declines are an *output* of the gap, not an input)
+- **Prioritization lever** (`demand.intake`): share of fit requests of each type taken on; the rest are
+  turned down up front ("declined by policy", counted apart from capacity declines). Greenfield
+  intake is the slider: Greenfield is ~3× the effort of pattern-based work and partners can't take it,
+  so at 80% intake the team *starts more engagements* (~300 vs ~285 over 24 months) for the same cost.
+  Coverage is measured against the demand taken on; "fit demand served" reports the share of all fit
+  demand actually started.
 - **Allocation**: partners take eligible work first, FDEs the rest; unserved demand waits, and
   50% of it walks away each month (capacity declines). Wait = backlog ÷ starts (Little's Law)
 - **Coverage** = capacity ÷ demand for engagements arriving this month (a monthly flow — exact
@@ -216,16 +223,29 @@ was the source):
    ordinal blue ramp); flywheel as three small multiples (library, reuse, average days to
    production — actual + forecast); starts by type; customer spend after go-live.
 
+**Built (Phase 4).** The filter row gained a fourth lever, **Greenfield intake** (the prioritization lever).
+
+4. **Confidence** — page controls for the coverage target (60–100%) and commit level (P50/P80/P90).
+   Boxes: chance of each target, coverage you can commit to, hires/month needed for that confidence,
+   FDEs short at the commit level. **Confidence-vs-resources curves** for hires/month (0–8) and partner
+   weeks (0–80), 1,000 paired trials per point, current setting marked; FDEs short over time at
+   P50/P80/P90; **engagement planner** (type, asset library on/off, kickoff date → share live by day
+   for three staffing levels, and a "dates to put in the SOW" table with the P80 go-live date);
+   **tornado** of the ten inputs that swing coverage most.
+5. **Scenarios** — Base, Hire-heavy, Partner-leverage, Productize, **Prioritize** (80% Greenfield
+   intake) and **Blended** (3.5 hires/mo, 45 partner weeks, 80% Greenfield intake), plus the current
+   filter-row settings: dot-and-whisker charts for coverage, Day-90 and reuse; cost vs engagements
+   delivered; a scorecard table (coverage with P10–P90, P(≥90%), P(≥80%), fit demand served,
+   engagements, policy vs capacity declines, people, cost, cost per engagement).
+6. **Data & definitions** — **Download the model (Excel)** (README, assumptions, monthly plan, Monte
+   Carlo P10/P50/P90, scenarios, SQL calibration, for the current settings); every input with its
+   distribution, source view and today's SQL value; each SQL view's code beside its live rows
+   (read-only, fixed list of views — no free-form SQL on a public app); calibration; metric dictionary.
+7. *(Stretch)* **Ask Claude** — plain-language explanation of scenario differences via the Claude API.
+
 Known limits: light theme only (dark mode not yet stepped and validated); fonts load from Google
 Fonts, so offline viewing falls back to system fonts; forecast Day-90 starts a few points below the
 recent cohort average (within cohort noise).
-4. **Confidence** — P(target) tiles, **confidence-vs-resources curve** (x = hires/qtr or partner
-   weeks, y = P(coverage ≥ 90%)), demand/capacity fan chart, engagement planner (go-live CDF by
-   staffing), Monte Carlo tornado.
-5. **Scenarios** — Base / Hire-heavy / Partner-leverage / Productize compared on medians *and*
-   spread.
-6. **Data & Definitions** — metric dictionary, SQL views, assumption → source table.
-7. *(Stretch)* **Ask Claude** — plain-language explanation of scenario differences via the Claude API.
 
 ## 8. Phases
 
@@ -235,8 +255,8 @@ recent cohort average (within cohort noise).
 | 2 | Vectorized model engine + tests (zero spread ⇒ Monte Carlo = single-value; same seed ⇒ same output) | **done** |
 | 2b | Monte Carlo runner, engagement simulator, percentile summaries | **done** |
 | 3 | Dashboard pages 1–3 | **done** |
-| 4 | Confidence page, scenarios, tornado, Excel export, definitions page | next |
-| 5 | Deploy, 1-page memo, 7-minute demo script, optional Ask Claude panel | |
+| 4 | Confidence page, scenarios (+ Prioritize, Blended, intake lever), tornado, Excel export, definitions page | **done** |
+| 5 | 1-page memo, demo script on the live pages, optional Ask Claude panel (deploy already done) | next |
 
 ## 9. Demo script (~9 minutes)
 
