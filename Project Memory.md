@@ -12,13 +12,13 @@ assumption in it, and pull the data yourself with SQL."
 **Status (as of 2026-10-24, end of Session 4):** Phases 1–4 complete and Phase 5's core done: six-page
 dashboard **live at [jwells-fde-capacity-model.streamlit.app](https://jwells-fde-capacity-model.streamlit.app/)**,
 1-page recommendation memo ([Markdown](docs/recommendation_memo.md) · [PDF](docs/recommendation_memo.pdf)),
-demo script on the live pages (PLAN.md §9). Repo public at
-[github.com/erasbleasp/fde-capacity-model](https://github.com/erasbleasp/fde-capacity-model).
+demo script on the live pages (PLAN.md §9). An expert review was answered with model **v2**: priors set
+independently of the generator, a backtest, a calibrated staffing-match lever, and a memo that states
+its limits. Repo public at [github.com/erasbleasp/fde-capacity-model](https://github.com/erasbleasp/fde-capacity-model).
 
-**Next session starts with:** whatever is left of Phase 5 — rehearse the demo (a dry run with Claude
-playing interviewer is an option), link the dashboard and memo from the application / personal site,
-and decide on the optional Ask Claude panel (needs your own API key as a Streamlit secret plus a
-spending cap). See What's next.
+**Next session starts with:** the rest of the review list (items 4–7 under What's next: effort spread
+over each engagement, missing frictions, value per engagement and margin, demand ceiling), then
+rehearse the demo and link the dashboard and memo from the application. See What's next.
 
 ---
 
@@ -75,7 +75,16 @@ spending cap). See What's next.
 | 47 | **Scenario comparison simulates each scenario once** (`scenario_table(extra=...)`) | First load of Scenarios / Data pages halved (1.24 s → 0.62 s locally); identical output. |
 | 48 | **Streamlit watches `model/`, `warehouse/`, `config/` (folderWatchList) and `watchdog` is installed** | A push left stale `model/` code in memory on Streamlit Cloud (TypeError); a requirements change forced the restart. Fallback: Manage app → Reboot. |
 | 49 | **Memo: Markdown is the source; the PDF is built by `scripts/build_memo_pdf.py` (WeasyPrint, falls back to headless Brave/Chrome)** | One source can't drift. Headless Brave was blocked by the command sandbox, so WeasyPrint was installed (Homebrew); `markdown` is a dev-only dependency. |
-| 50 | **Answer to "reset the 90% target?": commit at P80 instead** — 72% coverage under Blended (49% today) | No plan in the memo has better-than-even odds of 90% next half. |
+| 50 | **Answer to "reset the 90% target?": commit at P80 instead** — 51% coverage of demand taken on under Blended (v2; was 72% in v1) | No plan in the memo has better-than-even odds of 90% next half. |
+| 51 | **Don't describe the project as filling a resume gap** in repo docs (user request) | The goal line now says the project shows the posting's ask. |
+| 52 | **v2 judgment priors set independently of the data generator**: staffing exponent 0.6, reuse ceiling 0.30 (0.15–0.50), Greenfield reuse 0.5, Greenfield shift 0.5, partner efficiency 0.7 (all with ranges); k re-fit to 58 | Review: they had been copied from `synthetic_truth.yaml`, so the sensitivity ranges were centred on the truth by construction. |
+| 53 | **Backtest** (`analysis/backtest.py`): snapshot the warehouse at 31 Mar 2026, recalibrate, forecast Apr–Sep 2026, score against actuals | Tests the model's structure on held-out months instead of only recovering the generator. Result: 62% of months in the P10–P90 band vs ~80% expected; misses lean cautious. |
+| 54 | **Demand level from the trend fit** (16 a month, range 11.5–22 from the fit's standard error), not the trailing 6-month average (13) | A trailing average lags a growing series; the backtest showed a level from 12–18 noisy months can be off 20–25%. |
+| 55 | **Abandon rate 0.5 → 0.75** (range 0.5–0.95) | The backtest under-predicted capacity declines. Labelled as backtest-informed, so that input is no longer an out-of-sample test. |
+| 56 | **Staffing match (planned allocation) calibrated from the warehouse (82%, range 76–88%) and made a lever**; **Better matching** scenario at 90% | Review: about a fifth of FDE delivery time sits unassigned while ~30% of fit requests are declined — a matching problem the hardcoded 0.85 hid. |
+| 57 | **Memo states its limits**: growth as a condition (3% vs 6%), fit demand served beside coverage, APAC as a question (regions are pooled), no soft cost claims, a "what this model can't tell you" section | Review: the v1 memo overclaimed. |
+| 58 | **Productize: hold harvest at 5–7%; decision rule = move to 12% if assets cover ≥ 40% of pattern-based effort** (was 7–9% / ≥ 40%) | v2 sensitivity: 12% harvest starts ~8 fewer engagements and wins 3% of paired trials; the reuse ceiling still decides it. |
+| 59 | **Every dashboard cache is keyed on a version stamp** (hash of config, SQL, generator, model files); the warehouse rebuilds when its stamp changes | After the v2 push the live app served old `assumptions.yaml` results and a warehouse built from old views: Streamlit's cache keys on code and arguments, not files read. |
 
 ## Actions taken
 
@@ -158,25 +167,45 @@ spending cap). See What's next.
 - Rewrote PLAN.md §9 as a ~10-minute **demo script on the live pages**, with likely interview
   questions; README links the memo.
 
+### Session 4 (continued) — 2026-10-24: answering an expert review
+- Received an 8-point critique (circular validation, built-in prioritization gains, growth-driven
+  headline, APAC not a model output, missing frictions, ignored matching signal, effort charged at start,
+  no revenue/margin). Agreed it was fair; planned 7 fixes and did items 1–3 this session.
+- Removed the "resume gap" wording from this file (decision 51).
+- **Independent judgment priors** (decision 52); re-fit k to 58.
+- **Staffing match** calibrated from a new `v_calibration.planned_allocation` row and added as a 6th
+  filter-row lever plus a **Better matching** scenario (decision 56).
+- **Backtest** built and written up (`docs/backtest.md`), shown on a new Backtest tab in Data &
+  definitions; it changed the demand level (new `requests_per_month_trend` calibration row) and the
+  abandon rate (decisions 53–55).
+- **Productize sensitivity rerun** with v2 priors; `docs/productize_sensitivity.md` rewritten (decision 58).
+- **Memo rewritten** with the honesty fixes and v2 numbers, still one page (decision 57); demo script,
+  PLAN.md story / model / validation sections, metric dictionary, README and dashboard captions
+  updated. New `tests/test_backtest.py`.
+- Pushed `b485ca1`; the live app showed stale numbers, so added the cache version stamp (decision 59),
+  pushed `5e14c0a`, and verified live: 45% coverage, 1% chance of 90%, staffing match 82%, matching
+  local. **69 tests passing.**
+
 ### What the data shows (useful in the demo)
 - About 30% of requests that fit were declined in the last 6 months because the team was full, even with about 12% of FDE time unassigned.
 - The reuse ratio went from about 5% to about 9% after harvest time rose from 3% to 7% in January 2026. The library holds about 38 assets.
 - Day-90 productization is about 69% across mature cohorts. Spend is about 5× pre-kickoff 6 months after go-live.
 - Headcount is 40 (20 FDE, 14 Senior FDE, 6 Eng Manager). Time to fill is about 70 days (P50). Measured attrition is about 23%, which is noisy on a team this size.
 
-### What the model shows (base plan, made-up data)
-- Month 0 matches the history: Day-90 0.64 (0.69 measured), reuse 0.09, FDE utilization 0.58, headcount 41.
-- Requests grow ~6%/month (13 → ~50); hiring at 2.3/month takes headcount 41 → ~77. Coverage ~62% → ~40%.
-- P(coverage ≥ 90%, months 7–12) ≈ 10%. Confidence curve: 2 hires/mo → 7%, 4 → 22%, 6 → 41% (≈5-month hiring lag).
-- Demand inputs drive the uncertainty: monthly growth alone is ~45% of the variance in coverage.
-- Hire-heavy: coverage ~76%, +$16M over 24 months. Partner-leverage: ~66%, +32 engagements, +$5M.
-- Productize: reuse +3 pts, coverage and Day-90 flat; the reuse ceiling decides whether it pays (see decision 28).
-- Greenfield with 2 FDEs: P50 ~99 days, P80 ~136, 37% live by day 90; a third FDE → P80 ~106, 62%, for ~16% more staffing weeks.
-- FDE coverage by region (months 7–12): AMER ~58%, EMEA ~58%, **APAC ~40%** — where the next reqs should go.
-- Prioritize (80% Greenfield intake): 300 engagements vs 285 for the same $46m; coverage of demand taken on 73%.
-- Blended: coverage 88% (P10–P90 63–127%), 65% chance of ≥80%, 373 engagements, $59.7m (+$13m), $160k per engagement vs $163k; commit-at-P80 coverage 72% vs 49% today.
-- Confidence vs hiring (90% target): 2.3/mo → 8%, 6 → 41%, 8 → 61%. FDEs short: 38 at P50, 57 at P80.
-- Base figures shifted slightly after the intake lever was added (it draws its own random numbers): coverage odds 10% → 9%.
+### What the model shows (v2, base plan, made-up data)
+- Month 0 matches the history: Day-90 0.62 (0.69 measured), reuse 0.09; headcount 41.
+- Demand ~16 requests/month now; at 6%/month growth that's ~61/month by Sep 2028. Today's plan serves
+  ~45% of next half's demand; ~1% chance of 90% coverage. At 3% growth, Base ~57% and Blended ~83%.
+- Confidence vs hiring (90% target): even 8 hires/month → ~19%. FDEs short: ~68 at P50, ~96 at P80.
+- Better matching (90% assigned): +23 engagements (291 vs 268) for about the same spend.
+- Prioritize (80% Greenfield intake): 283 vs 268 engagements, but fit demand served only 38% → 40%.
+- Blended: coverage ~65% (P10–P90 46–93%), 22% chance of ≥80%, 361 engagements, $59.7m (+$13m);
+  commit-at-P80 coverage 51% (Base 36%).
+- Productize at 12% harvest: ~8 fewer engagements; reuse ceiling swings it −14 to +9.
+- Greenfield with 2 FDEs: P80 ~134 days, 38% live by day 90; a third FDE → P80 ~108, 60%.
+- FDE-to-demand ratio by region: AMER ~43%, EMEA ~43%, APAC ~29% — a question to check, not a finding.
+- Backtest: 62% of held-out months inside the P10–P90 band (target ~80%); utilization and Day-90 come
+  in above forecast (no seasonality; small-sample delivery rates).
 
 ## What's next
 
@@ -192,11 +221,19 @@ spending cap). See What's next.
   - [x] 1-page recommendation memo (Markdown + PDF)
   - [x] Demo script rewritten on the live dashboard pages, with likely questions
   - [ ] Rehearse the demo (optionally a dry run with Claude playing the interviewer)
+- [ ] **Expert-review fixes** (items 1–3 done in Session 4)
+  - [x] 1. Memo honesty (fit demand served, APAC as a question, no soft cost claims, growth as a condition, limits section)
+  - [x] 2. Backtest + judgment priors independent of the generator
+  - [x] 3. Staffing-match (planned allocation) lever, calibrated from data
+  - [ ] 4. Spread each engagement's effort over its duration (track work in progress); measure the start-month bias
+  - [ ] 5. Frictions: ramp that slows with fast hiring, partner ramp-up and minimum commitments, recruiting cost per hire
+  - [ ] 6. Economics: fees / consumption value / margin and a value per engagement by type (makes prioritization value-based)
+  - [ ] 7. Demand ceiling (S-curve) and a low-growth scenario
+  - [ ] From the backtest: seasonality (or calibration windows that skip December) and pooled delivery rates
   - [ ] Link the dashboard and memo from the application / personal site
   - [ ] Optional: Ask Claude panel explaining scenario differences (needs your Anthropic API key as a Streamlit secret + a spending cap)
 
 ### Open questions
-- Whether to add economics (fees, margin) beyond cost per engagement and consumption lift
 - Dark mode for the dashboard (needs its own validated palette steps)
 
 ## How to resume
@@ -204,10 +241,11 @@ spending cap). See What's next.
 ```bash
 cd "/Users/jaeger/Claude/Projects/FDE model demo"
 .venv/bin/python warehouse/build.py      # rebuild fde.duckdb (not committed)
-.venv/bin/python -m pytest tests -q      # expect 66 passed
+.venv/bin/python -m pytest tests -q      # expect 69 passed
 .venv/bin/python -m model.run            # model report (~2 s)
 .venv/bin/streamlit run app/streamlit_app.py   # dashboard at http://localhost:8501
 # live: https://jwells-fde-capacity-model.streamlit.app/ (redeploys on every push to main)
 .venv/bin/python -m analysis.productize_sensitivity   # Productize sensitivity (~16 s)
+.venv/bin/python -m analysis.backtest     # calibrate on 12 months, forecast the next 6, score vs actuals
 .venv/bin/python scripts/build_memo_pdf.py   # rebuild the memo PDF (needs: pip install markdown; brew install weasyprint)
 ```
