@@ -121,8 +121,9 @@ def variance_drivers(res: Result, params: Params, target: Target) -> pd.DataFram
 
 
 def scenario_table(tree: dict, scenarios: dict, targets: list[Target], n: int | None = None,
-                   seed: int | None = None) -> pd.DataFrame:
-    """Each scenario on medians AND spread: P50 and P10-P90 of each target metric, plus P(target)."""
+                   seed: int | None = None, extra=None) -> pd.DataFrame:
+    """Each scenario on medians AND spread: P50 and P10-P90 of each target metric, plus P(target).
+    `extra(result) -> dict` adds more columns from the same run, so each scenario is simulated once."""
     rows = []
     for name, sc in scenarios.items():
         res, _ = run_mc(tree, n, seed, sc.get("overrides"))
@@ -136,5 +137,7 @@ def scenario_table(tree: dict, scenarios: dict, targets: list[Target], n: int | 
         row["hc_end_p50"] = np.median(res["hc_total"][:, -1])
         row["cost_24m_p50"] = np.median(res["cost"].sum(axis=1))
         row["starts_24m_p50"] = np.median(res["starts"].sum(axis=1))
+        if extra is not None:
+            row.update(extra(res))
         rows.append(row)
     return pd.DataFrame(rows)

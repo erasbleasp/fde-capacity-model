@@ -144,16 +144,15 @@ def scenario_comparison(ov: tuple) -> pd.DataFrame:
     """Every named scenario plus the current filter-row settings, on medians and spread."""
     sc = dict(scenarios())
     sc["Current settings"] = {"overrides": dict(ov)}
-    df = scenario_table(assumptions(), sc, targets())
-    extra = []
-    for name, spec in sc.items():
-        r, _ = run_mc(assumptions(), overrides=spec.get("overrides"))
-        cov = targets()[0].values(r)
-        extra.append(dict(scenario=name, p_cov80=float((cov >= 0.8).mean()),
-                          fit_served=float(np.median(r["starts"].sum(axis=1) / r["fit_requests"].sum(axis=1))),
-                          declined_policy=float(np.median(r["declined_policy"].sum(axis=1))),
-                          declined_capacity=float(np.median(r["declined"].sum(axis=1)))))
-    return df.merge(pd.DataFrame(extra), on="scenario")
+    coverage = targets()[0]
+
+    def extra(r) -> dict:     # computed from the same run as the main columns (one simulation per scenario)
+        return dict(p_cov80=float((coverage.values(r) >= 0.8).mean()),
+                    fit_served=float(np.median(r["starts"].sum(axis=1) / r["fit_requests"].sum(axis=1))),
+                    declined_policy=float(np.median(r["declined_policy"].sum(axis=1))),
+                    declined_capacity=float(np.median(r["declined"].sum(axis=1))))
+
+    return scenario_table(assumptions(), sc, targets(), extra=extra)
 
 
 def assumption_rows() -> pd.DataFrame:
