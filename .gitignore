@@ -4,3 +4,5 @@ __pycache__/
 *.duckdb
 *.duckdb.wal
 .claude/
+fde.duckdb.version
+fde.building.duckdb

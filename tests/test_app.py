@@ -49,3 +49,19 @@ def test_excel_export_has_every_sheet():
     assert set(book) == {"README", "Assumptions", "Plan (single value)", "Monte Carlo", "Scenarios", "SQL calibration"}
     assert len(book["Plan (single value)"]) == tree["horizon"]["months"]
     assert {"P10", "P50", "P90"} <= set(book["Monte Carlo"].columns)
+
+
+def test_cache_version_changes_with_file_contents(tmp_path, monkeypatch):
+    """Caches are keyed on file contents, so a deploy that only edits a YAML or SQL file still invalidates them."""
+    import sys
+    sys.path.insert(0, str(Path(APP).parent))
+    import data
+
+    (tmp_path / "config").mkdir()
+    cfg = tmp_path / "config" / "assumptions.yaml"
+    cfg.write_text("a: 1\n")
+    monkeypatch.setattr(data, "ROOT", tmp_path)
+    before = data._stamp(["config/*.yaml"])
+    assert before == data._stamp(["config/*.yaml"])
+    cfg.write_text("a: 2\n")
+    assert data._stamp(["config/*.yaml"]) != before
