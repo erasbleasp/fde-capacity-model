@@ -14,6 +14,9 @@ headingFont = "'Source Serif 4':https://fonts.googleapis.com/css2?family=Source+
 [server]
 headless = true
 runOnSave = true
+# The model, warehouse and config live outside app/. Watch them too, so a deploy that changes them
+# reloads those modules instead of leaving stale copies in memory next to updated app code.
+folderWatchList = ["model", "warehouse", "config"]
 
 [browser]
 gatherUsageStats = false
