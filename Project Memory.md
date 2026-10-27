@@ -9,12 +9,14 @@ working session. The full build spec lives in [PLAN.md](PLAN.md); metric definit
 showing the posting's ask: "can build a capacity or staffing model from scratch, explain every
 assumption in it, and pull the data yourself with SQL."
 
-**Status (as of 2026-10-24, end of Session 4):** Phases 1–4 complete and Phase 5's core done: six-page
+**Status (as of 2026-10-27, end of Session 5):** Phases 1–4 complete and Phase 5's core done: six-page
 dashboard **live at [jwells-fde-capacity-model.streamlit.app](https://jwells-fde-capacity-model.streamlit.app/)**,
 1-page recommendation memo ([Markdown](docs/recommendation_memo.md) · [PDF](docs/recommendation_memo.pdf)),
 demo script on the live pages (PLAN.md §9). An expert review was answered with model **v2**: priors set
 independently of the generator, a backtest, a calibrated staffing-match lever, and a memo that states
 its limits. Repo public at [github.com/erasbleasp/fde-capacity-model](https://github.com/erasbleasp/fde-capacity-model).
+A GitHub Actions keep-alive (`.github/workflows/keep-alive.yml`) visits the app every 4 hours so it
+doesn't sleep; fixed in Session 5 after it failed on about half its runs.
 
 **Next session starts with:** the rest of the review list (items 4–7 under What's next: effort spread
 over each engagement, missing frictions, value per engagement and margin, demand ceiling), then
@@ -85,6 +87,7 @@ rehearse the demo and link the dashboard and memo from the application. See What
 | 57 | **Memo states its limits**: growth as a condition (3% vs 6%), fit demand served beside coverage, APAC as a question (regions are pooled), no soft cost claims, a "what this model can't tell you" section | Review: the v1 memo overclaimed. |
 | 58 | **Productize: hold harvest at 5–7%; decision rule = move to 12% if assets cover ≥ 40% of pattern-based effort** (was 7–9% / ≥ 40%) | v2 sensitivity: 12% harvest starts ~8 fewer engagements and wins 3% of paired trials; the reuse ceiling still decides it. |
 | 59 | **Every dashboard cache is keyed on a version stamp** (hash of config, SQL, generator, model files); the warehouse rebuilds when its stamp changes | After the v2 push the live app served old `assumptions.yaml` results and a warehouse built from old views: Streamlit's cache keys on code and arguments, not files read. |
+| 60 | **Keep-alive waits for the app's headline, not network idle**: load on `domcontentloaded`, poll up to 8 minutes for the wake button (click it) or "FDE capacity and outcomes" inside the `streamlitApp` iframe, reload once at 4 minutes, fail only if the app never renders; cron `23 */4 * * *`; use the runner's Chrome (`channel="chrome"`) instead of `playwright install --with-deps`; 15-minute job timeout | A Streamlit Cloud page never goes network-idle, so the old script failed exactly when the app was asleep. Off-the-hour, 4-hourly runs keep gaps under the ~12-hour sleep limit even if GitHub skips one. The browser download took 11–13 minutes on two runs. |
 
 ## Actions taken
 
@@ -185,6 +188,24 @@ rehearse the demo and link the dashboard and memo from the application. See What
 - Pushed `b485ca1`; the live app showed stale numbers, so added the cache version stamp (decision 59),
   pushed `5e14c0a`, and verified live: 45% coverage, 1% chance of 90%, staffing match 82%, matching
   local. **69 tests passing.**
+- Wrote `handoff.md` (state of play, gotchas, next steps) and kept it local: listed in
+  `.git/info/exclude`, never committed.
+
+### Session 5 — 2026-10-27: fixing the keep-alive
+- The keep-alive workflow (added on GitHub on 25 Oct, commit `e8c625e`) failed 4 of its first 9 runs,
+  always with `Page.goto: Timeout 60000ms exceeded` while waiting for `networkidle`.
+- **Diagnosis:** every passing run took ~17 s in the visit step (load + the fixed 10 s wait), so none
+  ever clicked the wake button; it passed only when the app was already awake. The Cloud page polls
+  `/api/v2/app/status`, holds a websocket and embeds a status-page frame, so a sleeping or booting app
+  never goes network-idle and the script timed out before reaching the button. Separately, the
+  `0 */6 * * *` schedule ran 4½–10 hours apart and the 06:00 UTC run never fired (GitHub delays or
+  drops busy top-of-the-hour schedules).
+- **Fix** (decision 60), pushed `17fcfa8`. The push first failed because the `gh` token lacked the
+  `workflow` scope; the user ran `gh auth refresh -h github.com -s workflow` (the device-code prompt
+  only checks for the browser approval after Enter is pressed in the terminal).
+- Manual run [40599095146](https://github.com/erasbleasp/fde-capacity-model/actions/runs/40599095146)
+  passed: "App ready in 5s (woken: False)", ~40 s for the whole job. The wake-button path is still
+  unproven because the app was awake; a run that wakes it logs "App was asleep; clicked wake".
 
 ### What the data shows (useful in the demo)
 - About 30% of requests that fit were declined in the last 6 months because the team was full, even with about 12% of FDE time unassigned.
@@ -217,6 +238,8 @@ rehearse the demo and link the dashboard and memo from the application. See What
 - [x] **Phase 3: dashboard pages 1–3** (Scorecard, Supply, Outcomes), Economist-style design
 - [x] Deploy to Streamlit Community Cloud (pulled forward from Phase 5)
 - [x] **Phase 4**: Confidence, Scenarios (+ Prioritize, Blended, Greenfield intake lever), Data & definitions, Excel export
+- [x] Keep-alive workflow fixed (Session 5)
+  - [ ] Confirm a scheduled run wakes a sleeping app (look for "woken: True" in the run log)
 - [ ] **Phase 5**
   - [x] 1-page recommendation memo (Markdown + PDF)
   - [x] Demo script rewritten on the live dashboard pages, with likely questions
@@ -248,4 +271,6 @@ cd "/Users/jaeger/Claude/Projects/FDE model demo"
 .venv/bin/python -m analysis.productize_sensitivity   # Productize sensitivity (~16 s)
 .venv/bin/python -m analysis.backtest     # calibrate on 12 months, forecast the next 6, score vs actuals
 .venv/bin/python scripts/build_memo_pdf.py   # rebuild the memo PDF (needs: pip install markdown; brew install weasyprint)
+gh run list -R erasbleasp/fde-capacity-model -w keep-alive -L 10   # keep-alive history
+gh workflow run keep-alive.yml -R erasbleasp/fde-capacity-model    # run it now (gh needs the workflow scope)
 ```
