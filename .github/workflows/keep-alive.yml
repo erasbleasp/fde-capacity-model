@@ -1,30 +1,57 @@
 name: keep-alive
 on:
   schedule:
-    - cron: "0 */6 * * *"
+    # every 4 hours, off the top of the hour: GitHub delays or drops busy :00 schedules,
+    # and Community Cloud sleeps an app after ~12 hours without a visit
+    - cron: "23 */4 * * *"
   workflow_dispatch:
 
 jobs:
   visit:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - run: pip install playwright && playwright install --with-deps chromium
+      # the runner already has Google Chrome, so skip Playwright's browser download and apt deps
+      - run: pip install playwright
       - name: Visit app
         run: |
           python - <<'EOF'
+          import re, sys, time
           from playwright.sync_api import sync_playwright
+
           URL = "https://jwells-fde-capacity-model.streamlit.app/"
+          READY = "FDE capacity and outcomes"   # the app's headline, inside the streamlitApp iframe
+          DEADLINE = 8 * 60                      # a cold start rebuilds the warehouse and reruns the Monte Carlo
+
           with sync_playwright() as p:
-              b = p.chromium.launch()
+              b = p.chromium.launch(channel="chrome")
               page = b.new_page()
-              page.goto(URL, wait_until="networkidle", timeout=60000)
-              btn = page.get_by_role("button", name="Yes, get this app back up!")
-              if btn.count():
-                  btn.click()
-                  page.wait_for_timeout(30000)
-              page.wait_for_timeout(10000)
+              # Not "networkidle": the Cloud page polls /api/v2/app/status and keeps a websocket open,
+              # so a sleeping or booting app never goes idle and goto timed out before the wake button.
+              page.goto(URL, wait_until="domcontentloaded", timeout=120_000)
+              wake = page.get_by_role("button", name=re.compile("get this app back up", re.I))
+              app = page.frame_locator("iframe[title='streamlitApp']").get_by_text(READY)
+
+              start, clicked, reloaded = time.time(), False, False
+              while not app.first.is_visible():
+                  elapsed = time.time() - start
+                  if elapsed > DEADLINE:
+                      print(f"App not ready after {elapsed:.0f}s; title={page.title()!r} url={page.url}")
+                      sys.exit(1)
+                  if not clicked and wake.count() and wake.first.is_visible():
+                      wake.first.click()
+                      clicked = True
+                      print(f"App was asleep; clicked wake at {elapsed:.0f}s")
+                  elif not clicked and not reloaded and elapsed > DEADLINE / 2:
+                      page.reload(wait_until="domcontentloaded")
+                      reloaded = True
+                      print(f"Nothing after {elapsed:.0f}s; reloaded")
+                  page.wait_for_timeout(5000)
+
+              print(f"App ready in {time.time() - start:.0f}s (woken: {clicked})")
+              page.wait_for_timeout(20_000)   # stay connected so the visit registers
               b.close()
           EOF
